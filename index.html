@@ -474,7 +474,7 @@ function loadState() {
       valuations: { ...DEFAULTS.valuations, ...(parsed.valuations||{}) },
       tenant,
       expenses: parsed.expenses || DEFAULTS.expenses,
-      rentHistory: parsed.rentHistory || DEFAULTS.rentHistory,
+      rentHistory: (parsed.rentHistory || DEFAULTS.rentHistory).filter(r => !r.period || !/^(Apr 2018|2018|2019|2020|2021)/.test(r.period)),
     };
   } catch(e) {
     return JSON.parse(JSON.stringify(DEFAULTS));
