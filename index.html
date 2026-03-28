@@ -238,7 +238,7 @@ td:last-child, th:last-child { text-align: right; }
     <table>
       <thead><tr><th>Date</th><th>Event</th><th>Value</th><th style="text-align:left">Notes</th></tr></thead>
       <tbody>
-        <tr><td>2017</td><td>Purchase — Unit #2</td><td>$850,000</td><td style="text-align:left;color:var(--text-muted);">Original purchase price</td></tr>
+        <tr><td>Apr 2018</td><td>Purchase — Unit #2</td><td>$850,000</td><td style="text-align:left;color:var(--text-muted);">Original purchase price, primary residence</td></tr>
         <tr><td>2019</td><td>Sale — Unit #3</td><td>$740,000</td><td style="text-align:left;color:var(--text-muted);">In-building comp</td></tr>
         <tr><td>Mar 2019</td><td>Sale — Unit #4</td><td>$877,000</td><td style="text-align:left;color:var(--text-muted);">In-building comp</td></tr>
         <tr><td>Sep 2020</td><td>Refi appraisal — Unit #2</td><td>$925,000</td><td style="text-align:left;color:var(--text-muted);">Basis for 2.875% refi, 80% LTV</td></tr>
@@ -422,9 +422,8 @@ const DEFAULTS = {
     {date:'2022-09-27',cat:'Loan',desc:'AC replacement (EnerBank)',amt:7550},
   ],
   rentHistory: [
-    {period:'2017–2020',rent:3500,notes:'Original tenant'},
-    {period:'2021',rent:3695,notes:'Lease renewal'},
-    {period:'2022–2023',rent:4250,notes:'New tenant'},
+    {period:'Apr 2018–2021',rent:0,notes:'Owner-occupied primary residence'},
+    {period:'2022–2023',rent:4250,notes:'First tenant (investment property)'},
     {period:'2024–present',rent:4500,notes:'Current lease'},
   ]
 };
@@ -485,18 +484,19 @@ function calcIRR(cashFlows) {
   return (lo + hi) / 2;
 }
 
-// Todd's historical annual cash flows by year (based on rent history)
+// Todd's annual cash flows by year as a rental (investment started 2022)
 function toddAnnualCF(year) {
   const annualOpex = (STATE.hoa + STATE.taxInsurance + STATE.maintReserve) * 12;
   const annualDebt = STATE.payment * 12;
-  const rent = year <= 2020 ? 3500 : year === 2021 ? 3695 : year <= 2023 ? 4250 : 4500;
+  const rent = year <= 2023 ? 4250 : 4500;
   return rent * 12 - annualOpex - annualDebt;
 }
 
-// Build Todd's IRR cash flows from 2017 to a given sale year with given net proceeds
+// Build Todd's IRR cash flows from 2022 (rental start) to sale year
+// Equity at time of conversion (2022) is used as the initial investment basis
 function toddIRRCashFlows(saleYear, netProceeds) {
-  const cfs = [-STATE.equityInvested]; // t=0: initial investment
-  for (let y = 2017; y < saleYear; y++) cfs.push(toddAnnualCF(y));
+  const cfs = [-STATE.equityInvested]; // t=0: equity basis at rental conversion
+  for (let y = 2022; y < saleYear; y++) cfs.push(toddAnnualCF(y));
   cfs.push(toddAnnualCF(saleYear) + netProceeds); // terminal year: CF + proceeds
   return cfs;
 }
@@ -589,9 +589,9 @@ function renderReturns() {
   });
 
   const eqYears = [2020,2021,2022,2023,2024,2025];
-  const implied = Math.max(0.02, Math.min(0.065, (cv / STATE.purchasePrice - 1) / 8));
+  const implied = Math.max(0.02, Math.min(0.065, (cv / STATE.purchasePrice - 1) / 7));
   const eqData  = eqYears.map(y => {
-    const val = STATE.purchasePrice * Math.pow(1+implied, y-2017);
+    const val = STATE.purchasePrice * Math.pow(1+implied, y-2018);
     let bal = 740000; const r=STATE.rate/12, pmt=3070.20;
     for (let m=0; m<(y-2020)*12; m++) bal -= pmt - bal*r;
     return Math.round(Math.max(0, val - bal));

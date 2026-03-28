@@ -43,7 +43,7 @@ No package.json, no build tools, no framework. Do not create additional files un
 ## Property Details
 
 - **Address:** 1110 6th St NE, Unit #2, Washington DC 20002
-- **Purchase price:** $850,000 (2017)
+- **Purchase price:** $850,000 (April 2018, primary residence until 2022)
 - **Loan:** Truist, loan #6311573544, 2.875% fixed, matures Oct 2050
 - **Monthly payment:** $3,678.68 (P+I + escrow)
   - Principal: ~$1,515
@@ -104,9 +104,8 @@ Default/hardcoded values live in the `DEFAULTS` object at the top of the `<scrip
 
 | Period | Monthly Rent |
 |--------|-------------|
-| 2017–2020 | $3,500 |
-| 2021 | $3,695 |
-| 2022–2023 | $4,250 |
+| Apr 2018–2021 | Owner-occupied (primary residence) |
+| 2022–2023 | $4,250 (first tenant, investment property) |
 | 2024–present | $4,500 (month-to-month) |
 
 ## Valuation Notes
