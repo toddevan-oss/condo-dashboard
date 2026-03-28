@@ -652,6 +652,13 @@ function renderReturns() {
     options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{ticks:{callback:v=>'$'+Math.round(v/1000)+'k'},grid:{color:'rgba(0,0,0,0.05)'}},x:{grid:{display:false}}} }
   });
 
+  const monthlyInterest = STATE.loanBalance * (STATE.rate / 12);
+  const piPayment = STATE.payment - STATE.taxInsurance;
+  const monthlyPrincipal = piPayment - monthlyInterest;
+  const annualPrincipal = monthlyPrincipal * 12;
+  const totalEconMonthly = cfads / 12 + monthlyPrincipal;
+  const totalEconAnnual = cfads + annualPrincipal;
+
   document.getElementById('pnl-table').innerHTML = `
     <thead><tr><th>Line item</th><th>Monthly</th><th>Annual</th></tr></thead>
     <tbody>
@@ -662,6 +669,8 @@ function renderReturns() {
       <tr class="total-row"><td>NOI</td><td>${fmt(noi/12)}</td><td>${fmt(noi)}</td></tr>
       <tr><td style="padding-left:20px;color:var(--text-muted);">Mortgage (P+I)</td><td>(${fmt(STATE.payment)})</td><td>(${fmt(annualDebt)})</td></tr>
       <tr class="total-row"><td>Cash flow (CFADS)</td><td style="color:${cfads>=0?'var(--green)':'var(--red)'}">${fmtd(cfads/12)}</td><td style="color:${cfads>=0?'var(--green)':'var(--red)'}">${fmtd(cfads)}</td></tr>
+      <tr style="border-top:1px dashed var(--border);"><td style="padding-left:20px;color:var(--text-muted);">+ Principal paydown (equity)</td><td style="color:var(--green)">+${fmt(monthlyPrincipal)}</td><td style="color:var(--green)">+${fmt(annualPrincipal)}</td></tr>
+      <tr class="total-row" style="background:rgba(26,74,138,0.06);"><td>Total economic return</td><td style="color:${totalEconMonthly>=0?'var(--green)':'var(--red)'}">${fmtd(totalEconMonthly)}</td><td style="color:${totalEconAnnual>=0?'var(--green)':'var(--red)'}">${fmtd(totalEconAnnual)}</td></tr>
     </tbody>
   `;
 }
