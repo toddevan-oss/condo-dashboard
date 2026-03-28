@@ -163,6 +163,7 @@ td:last-child, th:last-child { text-align: right; }
   <div class="nav-item" onclick="showPanel('tenant')"><span class="nav-icon">◷</span> Tenant & Lease</div>
   <div class="nav-section">Planning</div>
   <div class="nav-item" onclick="showPanel('scenario')"><span class="nav-icon">◬</span> Scenarios</div>
+  <div class="nav-item" onclick="showPanel('familysale')"><span class="nav-icon">◑</span> Family Sale</div>
 </nav>
 
 <main class="main">
@@ -325,6 +326,54 @@ td:last-child, th:last-child { text-align: right; }
   <div class="card"><div class="card-title">Projected equity & cumulative cash flow</div><div class="chart-wrap" style="height:280px;"><canvas id="scenChart"></canvas></div></div>
 </div>
 
+<!-- FAMILY SALE -->
+<div id="panel-familysale" class="panel">
+  <div class="page-title">Family Sale</div>
+  <div class="page-sub">Model a direct sale to family vs. open market · all figures update live</div>
+
+  <!-- Sale price slider -->
+  <div class="card">
+    <div class="card-title">Negotiated sale price</div>
+    <div class="slider-row">
+      <label>Family sale price</label>
+      <input type="range" min="800000" max="1050000" step="5000" value="900000" id="fs-price" oninput="renderFamilySale()">
+      <span class="slider-val" id="fsv-price">$900,000</span>
+    </div>
+    <div class="slider-row">
+      <label>Legal fees (both sides)</label>
+      <input type="range" min="1000" max="6000" step="250" value="2500" id="fs-legal" oninput="renderFamilySale()">
+      <span class="slider-val" id="fsv-legal">$2,500</span>
+    </div>
+  </div>
+
+  <!-- Side by side comparison: Your proceeds -->
+  <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-faint);margin-bottom:10px;">Your net proceeds — family vs. market</div>
+  <div class="card-grid-2" style="margin-bottom:16px;">
+    <div class="card" style="border-color:var(--border);margin:0;">
+      <div class="card-title" style="color:var(--blue);">◑ Family sale</div>
+      <div id="fs-seller-metrics"></div>
+    </div>
+    <div class="card" style="border-color:var(--border);margin:0;">
+      <div class="card-title" style="color:var(--text-muted);">⊕ Market sale (est.)</div>
+      <div id="fs-market-metrics"></div>
+    </div>
+  </div>
+
+  <!-- Parents' investment view -->
+  <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-faint);margin-bottom:10px;">Parents' investment — all cash, no mortgage</div>
+  <div class="metrics metrics-4" id="fs-parent-metrics"></div>
+
+  <div class="card">
+    <div class="card-title">Parents' P&L — at current rent</div>
+    <table id="fs-parent-pnl"></table>
+  </div>
+
+  <div class="card">
+    <div class="card-title">DC transaction costs breakdown</div>
+    <table id="fs-costs-table"></table>
+  </div>
+</div>
+
 </main>
 </div>
 
@@ -439,11 +488,12 @@ function showPanel(name) {
 }
 
 function renderPanel(name) {
-  if (name === 'returns')   renderReturns();
-  if (name === 'valuation') renderValuation();
-  if (name === 'opex')      renderOpex();
-  if (name === 'tenant')    renderTenant();
-  if (name === 'scenario')  renderScenario();
+  if (name === 'returns')    renderReturns();
+  if (name === 'valuation')  renderValuation();
+  if (name === 'opex')       renderOpex();
+  if (name === 'tenant')     renderTenant();
+  if (name === 'scenario')   renderScenario();
+  if (name === 'familysale') renderFamilySale();
 }
 
 // ─── POPULATE INPUTS ON LOAD ─────────────────────────────────────
@@ -724,6 +774,109 @@ function renderScenario() {
 }
 
 function updateScenario() { renderScenario(); }
+
+// ─── FAMILY SALE ─────────────────────────────────────────────────
+function renderFamilySale() {
+  const salePrice   = parseFloat(document.getElementById('fs-price').value);
+  const legalFees   = parseFloat(document.getElementById('fs-legal').value);
+  document.getElementById('fsv-price').textContent = fmt(salePrice);
+  document.getElementById('fsv-legal').textContent = fmt(legalFees);
+
+  // DC rates: transfer tax (seller) + recordation tax (buyer) = 1.45% each for sales over $400k
+  const dcRate       = 0.0145;
+  const transferTax  = salePrice * dcRate;   // seller pays
+  const recordation  = salePrice * dcRate;   // buyer pays
+  const sellerCosts  = transferTax + legalFees;
+  const buyerCosts   = recordation + legalFees;
+  const sellerNet    = salePrice - sellerCosts - STATE.loanBalance;
+
+  // Market sale comparison (6% selling costs)
+  const marketCosts  = salePrice * 0.06;
+  const marketNet    = salePrice - marketCosts - STATE.loanBalance;
+  const savings      = sellerNet - marketNet;
+
+  // Seller side: family
+  document.getElementById('fs-seller-metrics').innerHTML = `
+    <div style="margin-bottom:10px;">
+      <div class="metric-label">Sale price</div>
+      <div class="metric-value">${fmt(salePrice)}</div>
+    </div>
+    <div style="margin-bottom:10px;">
+      <div class="metric-label">Transaction costs</div>
+      <div class="metric-value neg">(${fmt(sellerCosts)})</div>
+      <div class="metric-sub">Transfer tax + legal</div>
+    </div>
+    <div style="margin-bottom:10px;">
+      <div class="metric-label">Pay off mortgage</div>
+      <div class="metric-value neg">(${fmt(STATE.loanBalance)})</div>
+    </div>
+    <div style="padding-top:10px;border-top:1px solid var(--border);">
+      <div class="metric-label">Net to you</div>
+      <div class="metric-value pos" style="font-size:28px;">${fmt(sellerNet)}</div>
+    </div>
+  `;
+
+  // Seller side: market
+  document.getElementById('fs-market-metrics').innerHTML = `
+    <div style="margin-bottom:10px;">
+      <div class="metric-label">Sale price (est.)</div>
+      <div class="metric-value">${fmt(salePrice)}</div>
+    </div>
+    <div style="margin-bottom:10px;">
+      <div class="metric-label">Transaction costs</div>
+      <div class="metric-value neg">(${fmt(marketCosts)})</div>
+      <div class="metric-sub">~6% agent + closing</div>
+    </div>
+    <div style="margin-bottom:10px;">
+      <div class="metric-label">Pay off mortgage</div>
+      <div class="metric-value neg">(${fmt(STATE.loanBalance)})</div>
+    </div>
+    <div style="padding-top:10px;border-top:1px solid var(--border);">
+      <div class="metric-label">Net to you</div>
+      <div class="metric-value" style="font-size:28px;">${fmt(marketNet)}</div>
+      <div class="metric-sub pos">Family sale saves you ${fmt(savings)}</div>
+    </div>
+  `;
+
+  // Parents' investment view (all cash, no mortgage)
+  const parentBasis  = salePrice + buyerCosts;  // what they're actually in for
+  const annualRent   = STATE.tenant.rent * 12;
+  const annualOpex   = (STATE.hoa + STATE.taxInsurance + STATE.maintReserve) * 12;
+  const parentNOI    = annualRent - annualOpex;  // no debt service
+  const parentCoC    = parentNOI / parentBasis;
+  const capRate      = parentNOI / salePrice;
+  const monthlyNOI   = parentNOI / 12;
+
+  document.getElementById('fs-parent-metrics').innerHTML = `
+    <div class="metric"><div class="metric-label">All-in basis</div><div class="metric-value">${fmt(parentBasis)}</div><div class="metric-sub">Price + recordation + legal</div></div>
+    <div class="metric"><div class="metric-label">Monthly NOI</div><div class="metric-value pos">${fmt(monthlyNOI)}</div><div class="metric-sub">No mortgage — all cash</div></div>
+    <div class="metric"><div class="metric-label">Annual NOI</div><div class="metric-value pos">${fmt(parentNOI)}</div><div class="metric-sub">${fmt(annualRent)} rent − ${fmt(annualOpex)} opex</div></div>
+    <div class="metric"><div class="metric-label">Cash-on-cash</div><div class="metric-value pos">${pct(parentCoC)}</div><div class="metric-sub">Cap rate ${pct(capRate)}</div></div>
+  `;
+
+  // Parents' P&L table
+  document.getElementById('fs-parent-pnl').innerHTML = `
+    <thead><tr><th>Line item</th><th>Monthly</th><th>Annual</th></tr></thead>
+    <tbody>
+      <tr><td>Gross rent</td><td>${fmt(STATE.tenant.rent)}</td><td>${fmt(annualRent)}</td></tr>
+      <tr><td style="padding-left:20px;color:var(--text-muted);">HOA</td><td>(${fmt(STATE.hoa)})</td><td>(${fmt(STATE.hoa*12)})</td></tr>
+      <tr><td style="padding-left:20px;color:var(--text-muted);">Tax & insurance</td><td>(${fmt(STATE.taxInsurance)})</td><td>(${fmt(STATE.taxInsurance*12)})</td></tr>
+      <tr><td style="padding-left:20px;color:var(--text-muted);">Maintenance reserve</td><td>(${fmt(STATE.maintReserve)})</td><td>(${fmt(STATE.maintReserve*12)})</td></tr>
+      <tr class="total-row"><td>NOI (= cash flow, no mortgage)</td><td style="color:var(--green);">${fmt(monthlyNOI)}</td><td style="color:var(--green);">${fmt(parentNOI)}</td></tr>
+    </tbody>
+  `;
+
+  // DC costs breakdown table
+  document.getElementById('fs-costs-table').innerHTML = `
+    <thead><tr><th>Cost</th><th>Who pays</th><th>Rate</th><th>Amount</th></tr></thead>
+    <tbody>
+      <tr><td>DC deed transfer tax</td><td>Seller (you)</td><td>1.45%</td><td>(${fmt(transferTax)})</td></tr>
+      <tr><td>DC deed recordation tax</td><td>Buyer (parents)</td><td>1.45%</td><td>(${fmt(recordation)})</td></tr>
+      <tr><td>Legal fees</td><td>Each side</td><td>—</td><td>(${fmt(legalFees)} × 2)</td></tr>
+      <tr class="total-row"><td>Total transaction costs</td><td></td><td></td><td>${fmt(sellerCosts + buyerCosts)}</td></tr>
+    </tbody>
+  `;
+}
 
 // ─── INIT ─────────────────────────────────────────────────────────
 populateInputs();
