@@ -533,12 +533,22 @@ const decodeState = str => JSON.parse(decodeURIComponent(escape(atob(str))));
   } catch(e) {}
 })();
 
-function copyShareLink() {
-  const url = location.origin + location.pathname + '#s=' + encodeState(STATE);
-  navigator.clipboard.writeText(url).then(
-    () => showToast('✓ Sync link copied — open on any device'),
-    () => { prompt('Copy this link:', url); }
-  );
+async function copyShareLink() {
+  const longUrl = location.origin + location.pathname + '#s=' + encodeState(STATE);
+  showToast('Shortening link…');
+  try {
+    const res = await fetch('https://is.gd/create.php?format=simple&url=' + encodeURIComponent(longUrl));
+    if (!res.ok) throw new Error('api error');
+    const shortUrl = (await res.text()).trim();
+    if (!shortUrl.startsWith('http')) throw new Error('bad response');
+    try { await navigator.clipboard.writeText(shortUrl); }
+    catch(e) { prompt('Copy this link:', shortUrl); }
+    showToast('✓ Short link copied: ' + shortUrl);
+  } catch(e) {
+    // Fallback: copy the long URL if shortener fails
+    try { await navigator.clipboard.writeText(longUrl); showToast('✓ Link copied (long form)'); }
+    catch(e2) { prompt('Copy this link:', longUrl); }
+  }
 }
 
 function initSliders() {
