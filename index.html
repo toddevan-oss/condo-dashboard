@@ -136,14 +136,33 @@ td:last-child, th:last-child { text-align: right; }
 /* Responsive */
 @media (max-width: 900px) {
   .app { grid-template-columns: 1fr; }
-  .sidebar { position: static; height: auto; display: flex; flex-wrap: wrap; gap: 0; padding: 16px 0 0; }
-  .sidebar-header { padding: 0 16px 12px; width: 100%; }
+  .sidebar { position: static; height: auto; display: flex; flex-wrap: wrap; gap: 0; padding: 12px 0 0; border-right: none; border-bottom: 1px solid var(--border); }
+  .sidebar-header { padding: 0 16px 10px; width: 100%; }
   .nav-section { display: none; }
-  .nav-item { padding: 8px 14px; font-size: 12px; border-left: none; border-bottom: 2px solid transparent; }
+  .nav-item { padding: 8px 12px; font-size: 12px; border-left: none; border-bottom: 2px solid transparent; white-space: nowrap; }
   .nav-item.active { border-left: none; border-bottom-color: var(--text); }
   .main { padding: 20px 16px; }
   .metrics-4 { grid-template-columns: repeat(2, 1fr); }
+  .metrics-3 { grid-template-columns: repeat(2, 1fr); }
   .card-grid-2 { grid-template-columns: 1fr; }
+  .slider-row label { min-width: 120px; }
+  table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
+@media (max-width: 540px) {
+  .main { padding: 14px 12px; }
+  .page-title { font-size: 18px; }
+  .page-sub { font-size: 12px; margin-bottom: 20px; }
+  .metric { padding: 12px 14px; }
+  .metric-value { font-size: 20px; }
+  .metric-label { font-size: 10px; }
+  .card { padding: 14px 14px; }
+  .slider-row { gap: 8px; margin-bottom: 12px; }
+  .slider-row label { min-width: 95px; font-size: 12px; }
+  .slider-val { min-width: 42px; font-size: 12px; }
+  .sidebar-address { font-size: 12px; }
+  .nav-item { padding: 7px 10px; font-size: 11px; }
+  .exp-row { grid-template-columns: 52px 1fr 82px 44px !important; }
+  .exp-row .exp-badge-col { display: none; }
 }
 </style>
 </head>
@@ -453,7 +472,8 @@ const DEFAULTS = {
   rentHistory: [
     {period:'2022–2023',rent:4250,notes:'First tenant'},
     {period:'2024–present',rent:4500,notes:'Current tenant (month-to-month)'},
-  ]
+  ],
+  sliders: { rent:2, appr:3, sale:2030, sell:6, vac:0, fsMonth:3, fsPrice:900000, fsLegal:2500, fsRent:2, fsAppr:3, fsSale:2035, fsSell:3, fsVac:0 }
 };
 
 // ─── LOCALSTORAGE ────────────────────────────────────────────────
@@ -475,6 +495,7 @@ function loadState() {
       tenant,
       expenses: parsed.expenses || DEFAULTS.expenses,
       rentHistory: (parsed.rentHistory || DEFAULTS.rentHistory).filter(r => !r.period || !/^(Apr 2018|2018|2019|2020|2021)/.test(r.period)),
+      sliders: { ...DEFAULTS.sliders, ...(parsed.sliders||{}) },
     };
   } catch(e) {
     return JSON.parse(JSON.stringify(DEFAULTS));
@@ -489,6 +510,16 @@ function saveState() {
     clearTimeout(window._toastTimer);
     window._toastTimer = setTimeout(() => toast.classList.remove('show'), 1500);
   } catch(e) {}
+}
+
+function initSliders() {
+  const s = STATE.sliders;
+  const sv = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+  sv('sl-rent', s.rent);    sv('sl-appr', s.appr);  sv('sl-sale', s.sale);
+  sv('sl-sell', s.sell);    sv('sl-vac',  s.vac);
+  sv('fs-month',   s.fsMonth); sv('fs-price', s.fsPrice); sv('fs-legal', s.fsLegal);
+  sv('fs-sl-rent', s.fsRent);  sv('fs-sl-appr', s.fsAppr); sv('fs-sl-sale', s.fsSale);
+  sv('fs-sl-sell', s.fsSell);  sv('fs-sl-vac',  s.fsVac);
 }
 
 let STATE = loadState();
@@ -789,7 +820,7 @@ function renderExpLog() {
       html += `
         <div class="exp-row" id="exp-row-${i}" style="grid-template-columns:80px 100px 1fr 90px 60px;">
           <span style="color:var(--text-faint);font-family:'DM Mono',monospace;">${e.date.slice(5)}</span>
-          <span><span class="badge badge-${catColor}">${e.cat}</span></span>
+          <span class="exp-badge-col"><span class="badge badge-${catColor}">${e.cat}</span></span>
           <span style="color:var(--text-muted);">${e.desc}</span>
           <span style="font-weight:600;font-family:'DM Mono',monospace;text-align:right;">${fmt(e.amt)}</span>
           <span style="text-align:right;white-space:nowrap;">
@@ -957,7 +988,15 @@ function renderScenario() {
   });
 }
 
-function updateScenario() { renderScenario(); }
+function updateScenario() {
+  STATE.sliders.rent = parseFloat(document.getElementById('sl-rent').value);
+  STATE.sliders.appr = parseFloat(document.getElementById('sl-appr').value);
+  STATE.sliders.sale = parseInt(document.getElementById('sl-sale').value);
+  STATE.sliders.sell = parseFloat(document.getElementById('sl-sell').value);
+  STATE.sliders.vac  = parseFloat(document.getElementById('sl-vac').value);
+  saveState();
+  renderScenario();
+}
 
 // ─── FAMILY SALE ─────────────────────────────────────────────────
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -1152,9 +1191,21 @@ function renderFamilySale() {
       <tr class="total-row"><td>Total transaction costs</td><td></td><td></td><td>${fmt(sellerCosts + buyerCosts)}</td></tr>
     </tbody>
   `;
+
+  // Persist slider state so other browsers see the same values
+  STATE.sliders.fsMonth = monthOffset;
+  STATE.sliders.fsPrice = salePrice;
+  STATE.sliders.fsLegal = legalFees;
+  STATE.sliders.fsRent  = rentGrowth * 100;
+  STATE.sliders.fsAppr  = apprecRate * 100;
+  STATE.sliders.fsSale  = saleYear;
+  STATE.sliders.fsSell  = sellCost * 100;
+  STATE.sliders.fsVac   = vacRate * 100;
+  saveState();
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────
+initSliders();
 populateInputs();
 renderReturns();
 </script>
