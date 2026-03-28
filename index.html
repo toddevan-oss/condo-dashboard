@@ -628,7 +628,8 @@ function renderReturns() {
   `;
 
   const cfYears = [2022,2023,2024,2025];
-  const cfData  = cfYears.map(() => Math.round(STATE.tenant.rent*12 - annualExp - annualDebt));
+  const rentByYear = {2022:4250, 2023:4250, 2024:4500, 2025:4500};
+  const cfData  = cfYears.map(y => Math.round(rentByYear[y]*12 - annualExp - annualDebt));
   if (cfChart) cfChart.destroy();
   cfChart = new Chart(document.getElementById('cfChart'), {
     type: 'bar',
