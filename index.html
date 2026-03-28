@@ -368,6 +368,19 @@ td:last-child, th:last-child { text-align: right; }
     <table id="fs-parent-pnl"></table>
   </div>
 
+  <!-- Parents' future scenario -->
+  <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-faint);margin-bottom:10px;margin-top:8px;">Parents' future scenario — if they eventually sell</div>
+  <div class="card">
+    <div class="card-title">Assumptions</div>
+    <div class="slider-row"><label>Annual rent growth</label><input type="range" min="0" max="8" step="0.5" value="2" id="fs-sl-rent" oninput="renderFamilySale()"><span class="slider-val" id="fs-sv-rent">2.0%</span></div>
+    <div class="slider-row"><label>Annual appreciation</label><input type="range" min="0" max="10" step="0.5" value="3" id="fs-sl-appr" oninput="renderFamilySale()"><span class="slider-val" id="fs-sv-appr">3.0%</span></div>
+    <div class="slider-row"><label>Sale year</label><input type="range" min="2027" max="2045" step="1" value="2035" id="fs-sl-sale" oninput="renderFamilySale()"><span class="slider-val" id="fs-sv-sale">2035</span></div>
+    <div class="slider-row"><label>Selling costs</label><input type="range" min="1" max="8" step="0.5" value="3" id="fs-sl-sell" oninput="renderFamilySale()"><span class="slider-val" id="fs-sv-sell">3.0%</span></div>
+    <div class="slider-row"><label>Vacancy rate</label><input type="range" min="0" max="15" step="1" value="0" id="fs-sl-vac" oninput="renderFamilySale()"><span class="slider-val" id="fs-sv-vac">0%</span></div>
+  </div>
+  <div class="metrics metrics-4" id="fs-scenario-metrics"></div>
+  <div class="card"><div class="card-title">Projected equity & cumulative cash flow (parents)</div><div class="chart-wrap" style="height:280px;"><canvas id="fsScenChart"></canvas></div></div>
+
   <div class="card">
     <div class="card-title">DC transaction costs breakdown</div>
     <table id="fs-costs-table"></table>
@@ -776,24 +789,25 @@ function renderScenario() {
 function updateScenario() { renderScenario(); }
 
 // ─── FAMILY SALE ─────────────────────────────────────────────────
+let fsScenChart;
 function renderFamilySale() {
-  const salePrice   = parseFloat(document.getElementById('fs-price').value);
-  const legalFees   = parseFloat(document.getElementById('fs-legal').value);
+  const salePrice  = parseFloat(document.getElementById('fs-price').value);
+  const legalFees  = parseFloat(document.getElementById('fs-legal').value);
   document.getElementById('fsv-price').textContent = fmt(salePrice);
   document.getElementById('fsv-legal').textContent = fmt(legalFees);
 
-  // DC rates: transfer tax (seller) + recordation tax (buyer) = 1.45% each for sales over $400k
-  const dcRate       = 0.0145;
-  const transferTax  = salePrice * dcRate;   // seller pays
-  const recordation  = salePrice * dcRate;   // buyer pays
-  const sellerCosts  = transferTax + legalFees;
-  const buyerCosts   = recordation + legalFees;
-  const sellerNet    = salePrice - sellerCosts - STATE.loanBalance;
+  // DC rates: 1.45% each for sales over $400k
+  const dcRate      = 0.0145;
+  const transferTax = salePrice * dcRate;   // seller pays
+  const recordation = salePrice * dcRate;   // buyer pays
+  const sellerCosts = transferTax + legalFees;
+  const buyerCosts  = recordation + legalFees;
+  const sellerNet   = salePrice - sellerCosts - STATE.loanBalance;
 
   // Market sale comparison (6% selling costs)
-  const marketCosts  = salePrice * 0.06;
-  const marketNet    = salePrice - marketCosts - STATE.loanBalance;
-  const savings      = sellerNet - marketNet;
+  const marketCosts = salePrice * 0.06;
+  const marketNet   = salePrice - marketCosts - STATE.loanBalance;
+  const savings     = sellerNet - marketNet;
 
   // Seller side: family
   document.getElementById('fs-seller-metrics').innerHTML = `
@@ -838,14 +852,14 @@ function renderFamilySale() {
     </div>
   `;
 
-  // Parents' investment view (all cash, no mortgage)
-  const parentBasis  = salePrice + buyerCosts;  // what they're actually in for
-  const annualRent   = STATE.tenant.rent * 12;
-  const annualOpex   = (STATE.hoa + STATE.taxInsurance + STATE.maintReserve) * 12;
-  const parentNOI    = annualRent - annualOpex;  // no debt service
-  const parentCoC    = parentNOI / parentBasis;
-  const capRate      = parentNOI / salePrice;
-  const monthlyNOI   = parentNOI / 12;
+  // Parents' current returns (all cash, no mortgage)
+  const parentBasis = salePrice + buyerCosts;
+  const annualRent  = STATE.tenant.rent * 12;
+  const annualOpex  = (STATE.hoa + STATE.taxInsurance + STATE.maintReserve) * 12;
+  const parentNOI   = annualRent - annualOpex;
+  const parentCoC   = parentNOI / parentBasis;
+  const capRate     = parentNOI / salePrice;
+  const monthlyNOI  = parentNOI / 12;
 
   document.getElementById('fs-parent-metrics').innerHTML = `
     <div class="metric"><div class="metric-label">All-in basis</div><div class="metric-value">${fmt(parentBasis)}</div><div class="metric-sub">Price + recordation + legal</div></div>
@@ -865,6 +879,62 @@ function renderFamilySale() {
       <tr class="total-row"><td>NOI (= cash flow, no mortgage)</td><td style="color:var(--green);">${fmt(monthlyNOI)}</td><td style="color:var(--green);">${fmt(parentNOI)}</td></tr>
     </tbody>
   `;
+
+  // ── Future scenario sliders ──
+  const rentGrowth = parseFloat(document.getElementById('fs-sl-rent').value) / 100;
+  const apprecRate = parseFloat(document.getElementById('fs-sl-appr').value) / 100;
+  const saleYear   = parseInt(document.getElementById('fs-sl-sale').value);
+  const sellCost   = parseFloat(document.getElementById('fs-sl-sell').value) / 100;
+  const vacRate    = parseFloat(document.getElementById('fs-sl-vac').value) / 100;
+  document.getElementById('fs-sv-rent').textContent = (rentGrowth * 100).toFixed(1) + '%';
+  document.getElementById('fs-sv-appr').textContent = (apprecRate * 100).toFixed(1) + '%';
+  document.getElementById('fs-sv-sale').textContent = saleYear;
+  document.getElementById('fs-sv-sell').textContent = (sellCost * 100).toFixed(1) + '%';
+  document.getElementById('fs-sv-vac').textContent  = (vacRate * 100).toFixed(0) + '%';
+
+  const holdYears    = saleYear - 2026;
+  const futurePrice  = salePrice * Math.pow(1 + apprecRate, holdYears);
+  const futureEquity = futurePrice - futurePrice * sellCost;  // all cash, no loan to pay off
+  let cumCF = 0;
+  for (let y = 0; y < holdYears; y++) {
+    cumCF += (STATE.tenant.rent * 12 * Math.pow(1 + rentGrowth, y) * (1 - vacRate)) - annualOpex;
+  }
+  const totalReturn = futureEquity + cumCF;
+  const moic        = totalReturn / parentBasis;
+
+  document.getElementById('fs-scenario-metrics').innerHTML = `
+    <div class="metric"><div class="metric-label">Sale price (${saleYear})</div><div class="metric-value">${fmt(futurePrice)}</div><div class="metric-sub">${pct(apprecRate)}/yr from ${fmt(salePrice)}</div></div>
+    <div class="metric"><div class="metric-label">Net sale proceeds</div><div class="metric-value pos">${fmt(futureEquity)}</div><div class="metric-sub">After ${pct(sellCost)} selling costs</div></div>
+    <div class="metric"><div class="metric-label">Cum. cash flow</div><div class="metric-value pos">${fmt(cumCF)}</div><div class="metric-sub">Over ${holdYears} years</div></div>
+    <div class="metric"><div class="metric-label">Total MOIC</div><div class="metric-value pos">${moic.toFixed(2)}x</div><div class="metric-sub">on ${fmt(parentBasis)} invested</div></div>
+  `;
+
+  // Chart: equity + cumulative cash flow over hold period
+  const yrs = [], eqArr = [], cfArr = [];
+  let runCF = 0;
+  for (let y = 0; y <= holdYears; y++) {
+    yrs.push(2026 + y);
+    eqArr.push(Math.round(salePrice * Math.pow(1 + apprecRate, y)));  // no loan — equity = full value
+    cfArr.push(Math.round(runCF));
+    runCF += (STATE.tenant.rent * 12 * Math.pow(1 + rentGrowth, y) * (1 - vacRate)) - annualOpex;
+  }
+
+  if (fsScenChart) fsScenChart.destroy();
+  fsScenChart = new Chart(document.getElementById('fsScenChart'), {
+    type: 'line',
+    data: { labels: yrs, datasets: [
+      { label: 'Property value', data: eqArr, borderColor: '#4a3a8a', backgroundColor: 'rgba(74,58,138,0.07)', fill: true, tension: 0.35, pointRadius: 3 },
+      { label: 'Cum. cash flow', data: cfArr, borderColor: '#1a7a52', backgroundColor: 'rgba(26,122,82,0.07)', fill: true, tension: 0.35, pointRadius: 3, borderDash: [5, 4] }
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, labels: { font: { size: 11 }, boxWidth: 20 } } },
+      scales: {
+        y: { ticks: { callback: v => '$' + Math.round(v / 1000) + 'k' }, grid: { color: 'rgba(0,0,0,0.04)' } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
 
   // DC costs breakdown table
   document.getElementById('fs-costs-table').innerHTML = `
