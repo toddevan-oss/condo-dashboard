@@ -355,7 +355,12 @@ td:last-child, th:last-child { text-align: right; }
 
   <!-- Sale price slider -->
   <div class="card">
-    <div class="card-title">Negotiated sale price</div>
+    <div class="card-title">Sale assumptions</div>
+    <div class="slider-row">
+      <label>Sale month</label>
+      <input type="range" min="0" max="11" step="1" value="3" id="fs-month" oninput="renderFamilySale()">
+      <span class="slider-val" id="fsv-month">Apr 2026</span>
+    </div>
     <div class="slider-row">
       <label>Family sale price</label>
       <input type="range" min="800000" max="1050000" step="5000" value="900000" id="fs-price" oninput="renderFamilySale()">
@@ -944,8 +949,29 @@ function renderScenario() {
 function updateScenario() { renderScenario(); }
 
 // ─── FAMILY SALE ─────────────────────────────────────────────────
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
 let fsScenChart;
 function renderFamilySale() {
+  const monthOffset = parseInt(document.getElementById('fs-month').value); // 0=Jan, 3=Apr, etc.
+  const saleMonthIdx = (2 + monthOffset) % 12; // March=2 is current, so offset from there
+  const saleYear2026 = monthOffset <= 9; // Jan-Oct 2026, Nov-Dec spill to... actually all in 2026
+  const saleDateLabel = MONTHS[saleMonthIdx] + ' 2026';
+  document.getElementById('fsv-month').textContent = saleDateLabel;
+
+  // Calculate loan balance at sale month (current balance is as of Mar 2026)
+  const piPayment = STATE.payment - STATE.taxInsurance;
+  const r = STATE.rate / 12;
+  let balAtSale = STATE.loanBalance;
+  for (let m = 0; m < monthOffset; m++) {
+    balAtSale -= piPayment - balAtSale * r;
+  }
+  const principalPaydown = STATE.loanBalance - balAtSale;
+
+  // Cash flow from Mar 2026 to sale (months of rent minus all costs)
+  const monthlyCF = STATE.tenant.rent - STATE.hoa - STATE.taxInsurance - STATE.maintReserve - STATE.payment;
+  const cfToSale  = monthlyCF * monthOffset;
+
   const salePrice  = parseFloat(document.getElementById('fs-price').value);
   const legalFees  = parseFloat(document.getElementById('fs-legal').value);
   document.getElementById('fsv-price').textContent = fmt(salePrice);
@@ -957,7 +983,7 @@ function renderFamilySale() {
   const recordation = salePrice * dcRate;   // buyer pays
   const sellerCosts = transferTax + legalFees;
   const buyerCosts  = recordation + legalFees;
-  const sellerNet   = salePrice - sellerCosts - STATE.loanBalance;
+  const sellerNet   = salePrice - sellerCosts - balAtSale;
 
   // Market sale comparison (6% selling costs)
   const marketCosts = salePrice * 0.06;
@@ -970,7 +996,7 @@ function renderFamilySale() {
   const mktTransfer  = salePrice * 0.0145;
   const titleFees    = 1500;
   const marketCostDetailed = listingComm + buyerComm + mktTransfer + titleFees;
-  const marketNetDetailed  = salePrice - marketCostDetailed - STATE.loanBalance;
+  const marketNetDetailed  = salePrice - marketCostDetailed - balAtSale;
   const savingsDetailed    = sellerNet - marketNetDetailed;
 
   const rowStyle = 'display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px;';
@@ -986,8 +1012,10 @@ function renderFamilySale() {
     <div style="${rowStyle}"><span style="color:var(--text-muted);">DC transfer tax (1.45%)</span><span class="neg">(${fmt(transferTax)})</span></div>
     <div style="${rowStyle}"><span style="color:var(--text-muted);">Legal fees (your side)</span><span class="neg">(${fmt(legalFees)})</span></div>
     <div style="${totalStyle}"><span style="color:var(--text-muted);">Subtotal costs</span><span class="neg">(${fmt(sellerCosts)})</span></div>
-    <div style="${rowStyle}"><span style="color:var(--text-muted);">Mortgage payoff</span><span class="neg">(${fmt(STATE.loanBalance)})</span></div>
+    <div style="${rowStyle}"><span style="color:var(--text-muted);">Mortgage payoff (${saleDateLabel})</span><span class="neg">(${fmt(balAtSale)})</span></div>
+    <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:11px;color:var(--text-faint);"><span>↳ vs current balance ${fmt(STATE.loanBalance)}</span><span class="pos">+${fmt(principalPaydown)} paid down</span></div>
     <div style="${netStyle}"><span>Net to you</span><span class="pos">${fmt(sellerNet)}</span></div>
+    <div style="${rowStyle}"><span style="color:var(--text-muted);">Cash flow Mar→${saleDateLabel}</span><span class="${cfToSale>=0?'pos':'neg'}">${fmtd(cfToSale)}</span></div>
     <div style="margin-top:10px;padding:8px 10px;background:var(--blue-bg);border-radius:var(--radius-sm);font-size:12px;color:var(--blue);font-weight:600;">Your IRR (rental period): <strong>${toddFamilyIRRStr}</strong></div>
   `;
 
@@ -1001,7 +1029,7 @@ function renderFamilySale() {
     <div style="${rowStyle}"><span style="color:var(--text-muted);">DC transfer tax (1.45%)</span><span class="neg">(${fmt(mktTransfer)})</span></div>
     <div style="${rowStyle}"><span style="color:var(--text-muted);">Title & settlement</span><span class="neg">(${fmt(titleFees)})</span></div>
     <div style="${totalStyle}"><span style="color:var(--text-muted);">Subtotal costs</span><span class="neg">(${fmt(marketCostDetailed)})</span></div>
-    <div style="${rowStyle}"><span style="color:var(--text-muted);">Mortgage payoff</span><span class="neg">(${fmt(STATE.loanBalance)})</span></div>
+    <div style="${rowStyle}"><span style="color:var(--text-muted);">Mortgage payoff (${saleDateLabel})</span><span class="neg">(${fmt(balAtSale)})</span></div>
     <div style="${netStyle}"><span>Net to you</span><span>${fmt(marketNetDetailed)}</span></div>
     <div style="margin-top:8px;padding:8px 10px;background:var(--blue-bg);border-radius:var(--radius-sm);font-size:12px;color:var(--blue);font-weight:600;">Your IRR (rental period): <strong>${toddMarketIRRStr}</strong></div>
     <div style="margin-top:6px;padding:8px 10px;background:var(--green-bg);border-radius:var(--radius-sm);font-size:12px;color:var(--green);font-weight:600;">Family sale puts <strong>${fmt(savingsDetailed)}</strong> more in your pocket</div>
