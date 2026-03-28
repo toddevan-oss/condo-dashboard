@@ -118,7 +118,7 @@ td:last-child, th:last-child { text-align: right; }
 .val-bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
 
 /* Expense log */
-.exp-row { display: grid; grid-template-columns: 80px 100px 1fr 90px; gap: 10px; font-size: 12px; padding: 7px 0; border-bottom: 1px solid var(--border); align-items: center; }
+.exp-row { display: grid; grid-template-columns: 80px 100px 1fr 90px 60px; gap: 10px; font-size: 12px; padding: 7px 0; border-bottom: 1px solid var(--border); align-items: center; }
 .exp-row:last-child { border-bottom: none; }
 .yr-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-faint); margin: 12px 0 4px; display: flex; justify-content: space-between; }
 
@@ -670,20 +670,76 @@ function renderExpLog() {
   const years = [...new Set(STATE.expenses.map(e=>e.date.slice(0,4)))].sort().reverse();
   let html = '';
   years.forEach(yr => {
-    const rows = STATE.expenses.filter(e=>e.date.startsWith(yr));
+    const rows = STATE.expenses.map((e,i) => ({...e,i})).filter(e=>e.date.startsWith(yr));
     const ytot = rows.reduce((a,e)=>a+e.amt,0);
     html += `<div class="yr-label"><span>${yr}</span><span>${fmt(ytot)}</span></div>`;
-    rows.forEach(e => {
+    rows.forEach(({i, ...e}) => {
       const catColor = {Repair:'red',Maintenance:'amber',Appliances:'blue','Turn Over':'green',Loan:'purple'}[e.cat]||'blue';
-      html += `<div class="exp-row">
-        <span style="color:var(--text-faint);font-family:'DM Mono',monospace;">${e.date.slice(5)}</span>
-        <span><span class="badge badge-${catColor}">${e.cat}</span></span>
-        <span style="color:var(--text-muted);">${e.desc}</span>
-        <span style="font-weight:600;font-family:'DM Mono',monospace;text-align:right;">${fmt(e.amt)}</span>
-      </div>`;
+      html += `
+        <div class="exp-row" id="exp-row-${i}" style="grid-template-columns:80px 100px 1fr 90px 60px;">
+          <span style="color:var(--text-faint);font-family:'DM Mono',monospace;">${e.date.slice(5)}</span>
+          <span><span class="badge badge-${catColor}">${e.cat}</span></span>
+          <span style="color:var(--text-muted);">${e.desc}</span>
+          <span style="font-weight:600;font-family:'DM Mono',monospace;text-align:right;">${fmt(e.amt)}</span>
+          <span style="text-align:right;white-space:nowrap;">
+            <button onclick="startEditExpense(${i})" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text-faint);padding:2px 4px;" title="Edit">✎</button>
+            <button onclick="deleteExpense(${i})" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--red);padding:2px 4px;" title="Delete">✕</button>
+          </span>
+        </div>
+        <div id="exp-edit-${i}" style="display:none;background:var(--bg);border-radius:var(--radius-sm);padding:12px;margin-bottom:6px;border:1px solid var(--border);">
+          <div class="card-grid-2">
+            <div class="input-group"><label>Date</label><input type="date" id="ee-date-${i}" value="${e.date}"></div>
+            <div class="input-group"><label>Category</label>
+              <select id="ee-cat-${i}">
+                <option${e.cat==='Repair'?' selected':''}>Repair</option>
+                <option${e.cat==='Maintenance'?' selected':''}>Maintenance</option>
+                <option${e.cat==='Appliances'?' selected':''}>Appliances</option>
+                <option${e.cat==='Turn Over'?' selected':''}>Turn Over</option>
+                <option${e.cat==='HOA'?' selected':''}>HOA</option>
+                <option${e.cat==='Loan'?' selected':''}>Loan</option>
+                <option${e.cat==='Other'?' selected':''}>Other</option>
+              </select>
+            </div>
+            <div class="input-group"><label>Description</label><input type="text" id="ee-desc-${i}" value="${e.desc}"></div>
+            <div class="input-group"><label>Amount ($)</label><input type="number" id="ee-amt-${i}" value="${e.amt}"></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:4px;">
+            <button class="btn btn-primary" onclick="saveEditExpense(${i})">Save</button>
+            <button class="btn" onclick="cancelEditExpense(${i})">Cancel</button>
+          </div>
+        </div>`;
     });
   });
   document.getElementById('expense-log').innerHTML = html || '<p style="color:var(--text-faint);font-size:13px;padding:8px 0;">No expenses logged yet.</p>';
+}
+
+function startEditExpense(i) {
+  document.getElementById('exp-row-' + i).style.display = 'none';
+  document.getElementById('exp-edit-' + i).style.display = 'block';
+}
+
+function cancelEditExpense(i) {
+  document.getElementById('exp-row-' + i).style.display = 'grid';
+  document.getElementById('exp-edit-' + i).style.display = 'none';
+}
+
+function saveEditExpense(i) {
+  const date = document.getElementById('ee-date-' + i).value;
+  const cat  = document.getElementById('ee-cat-' + i).value;
+  const desc = document.getElementById('ee-desc-' + i).value.trim();
+  const amt  = parseFloat(document.getElementById('ee-amt-' + i).value) || 0;
+  if (!date || !desc || !amt) return;
+  STATE.expenses[i] = { date, cat, desc, amt };
+  STATE.expenses.sort((a,b) => b.date.localeCompare(a.date));
+  saveState();
+  renderOpex();
+}
+
+function deleteExpense(i) {
+  if (!confirm('Delete this expense?')) return;
+  STATE.expenses.splice(i, 1);
+  saveState();
+  renderOpex();
 }
 
 function toggleAddForm() {
@@ -703,6 +759,7 @@ function addExpense() {
   const amt  = parseFloat(document.getElementById('exp-amt').value) || 0;
   if (!date || !desc || !amt) return;
   STATE.expenses.unshift({ date, cat, desc, amt });
+  STATE.expenses.sort((a,b) => b.date.localeCompare(a.date));
   saveState();
   toggleAddForm();
   renderOpex();
