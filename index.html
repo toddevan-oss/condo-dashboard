@@ -438,11 +438,14 @@ function loadState() {
     if (!saved) return JSON.parse(JSON.stringify(DEFAULTS));
     const parsed = JSON.parse(saved);
     // Deep merge to pick up any new default fields
+    const tenant = { ...DEFAULTS.tenant, ...(parsed.tenant||{}) };
+    // If saved end date is in the past, treat as month-to-month
+    if (tenant.end && new Date(tenant.end) < new Date()) tenant.end = '';
     return {
       ...DEFAULTS,
       ...parsed,
       valuations: { ...DEFAULTS.valuations, ...(parsed.valuations||{}) },
-      tenant: { ...DEFAULTS.tenant, ...(parsed.tenant||{}) },
+      tenant,
       expenses: parsed.expenses || DEFAULTS.expenses,
       rentHistory: parsed.rentHistory || DEFAULTS.rentHistory,
     };
