@@ -643,13 +643,37 @@ function renderValuation() {
 
 // ─── OPEX ─────────────────────────────────────────────────────────
 function renderOpex() {
-  const total = STATE.expenses.reduce((a,e)=>a+e.amt,0);
+  const total   = STATE.expenses.reduce((a,e)=>a+e.amt,0);
   const monthly = STATE.hoa + STATE.taxInsurance + STATE.maintReserve;
-  const avgMaint = total / 3;
+
+  // Calculate months spanned from earliest expense to today
+  const dates     = STATE.expenses.map(e=>new Date(e.date));
+  const earliest  = dates.length ? new Date(Math.min(...dates)) : new Date();
+  const now       = new Date();
+  const monthsSpanned = Math.max(1, (now.getFullYear() - earliest.getFullYear()) * 12 + (now.getMonth() - earliest.getMonth()) + 1);
+  const avgMonthly    = total / monthsSpanned;
+  const reserve       = STATE.maintReserve;
+  const delta         = avgMonthly - reserve;
+  const overUnder     = delta >= 0 ? `+${fmt(delta)}/mo over budget` : `${fmt(Math.abs(delta))}/mo under budget`;
+  const deltaClass    = delta >= 0 ? 'neg' : 'pos';
+
   document.getElementById('opex-metrics').innerHTML = `
     <div class="metric"><div class="metric-label">Monthly fixed</div><div class="metric-value">${fmt(monthly)}</div><div class="metric-sub">${fmt(monthly*12)}/year</div></div>
-    <div class="metric"><div class="metric-label">Maintenance logged</div><div class="metric-value neg">${fmt(total)}</div><div class="metric-sub">since 2022</div></div>
-    <div class="metric"><div class="metric-label">Avg maintenance/yr</div><div class="metric-value">${fmt(avgMaint)}</div><div class="metric-sub">vs ${fmt(STATE.maintReserve*12)} reserved</div></div>
+    <div class="metric"><div class="metric-label">Maintenance logged</div><div class="metric-value neg">${fmt(total)}</div><div class="metric-sub">since ${earliest.toLocaleDateString('en-US',{month:'short',year:'numeric'})}</div></div>
+    <div class="metric">
+      <div class="metric-label">Avg actual vs reserve</div>
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px;">
+        <span class="metric-value">${fmt(avgMonthly)}</span>
+        <span style="font-size:13px;color:var(--text-faint);">/ mo actual</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+        <span style="font-size:12px;color:var(--text-muted);">Reserve: ${fmt(reserve)}/mo</span>
+        <span class="badge badge-${delta>=0?'red':'green'}" style="font-size:10px;">${overUnder}</span>
+      </div>
+      <div style="background:var(--surface2);border-radius:3px;height:6px;overflow:hidden;">
+        <div style="height:100%;border-radius:3px;background:${delta>=0?'var(--red)':'var(--green)'};width:${Math.min(100,(avgMonthly/reserve)*100).toFixed(1)}%;transition:width 0.4s;"></div>
+      </div>
+    </div>
   `;
   const items = [
     {label:'HOA dues',mo:STATE.hoa,p:STATE.hoa/monthly,cls:'blue'},
