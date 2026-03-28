@@ -981,7 +981,8 @@ function renderFamilySale() {
   const dcRate      = 0.0145;
   const transferTax = salePrice * dcRate;   // seller pays
   const recordation = salePrice * dcRate;   // buyer pays
-  const sellerCosts = transferTax + legalFees;
+  const titleFeeFamily = 1500;
+  const sellerCosts = transferTax + legalFees + titleFeeFamily;
   const buyerCosts  = recordation + legalFees;
   const sellerNet   = salePrice - sellerCosts - balAtSale;
 
@@ -1011,6 +1012,7 @@ function renderFamilySale() {
     <div style="${rowStyle}"><span style="color:var(--text-muted);">Sale price</span><span>${fmt(salePrice)}</span></div>
     <div style="${rowStyle}"><span style="color:var(--text-muted);">DC transfer tax (1.45%)</span><span class="neg">(${fmt(transferTax)})</span></div>
     <div style="${rowStyle}"><span style="color:var(--text-muted);">Legal fees (your side)</span><span class="neg">(${fmt(legalFees)})</span></div>
+    <div style="${rowStyle}"><span style="color:var(--text-muted);">Title & settlement</span><span class="neg">(${fmt(titleFeeFamily)})</span></div>
     <div style="${totalStyle}"><span style="color:var(--text-muted);">Subtotal costs</span><span class="neg">(${fmt(sellerCosts)})</span></div>
     <div style="${rowStyle}"><span style="color:var(--text-muted);">Mortgage payoff (${saleDateLabel})</span><span class="neg">(${fmt(balAtSale)})</span></div>
     <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:11px;color:var(--text-faint);"><span>↳ vs current balance ${fmt(STATE.loanBalance)}</span><span class="pos">+${fmt(principalPaydown)} paid down</span></div>
@@ -1134,6 +1136,7 @@ function renderFamilySale() {
     <tbody>
       <tr><td>DC deed transfer tax</td><td>Seller (you)</td><td>1.45%</td><td>(${fmt(transferTax)})</td></tr>
       <tr><td>DC deed recordation tax</td><td>Buyer (parents)</td><td>1.45%</td><td>(${fmt(recordation)})</td></tr>
+      <tr><td>Title & settlement</td><td>Seller (you)</td><td>—</td><td>(${fmt(titleFeeFamily)})</td></tr>
       <tr><td>Legal fees</td><td>Each side</td><td>—</td><td>(${fmt(legalFees)} × 2)</td></tr>
       <tr class="total-row"><td>Total transaction costs</td><td></td><td></td><td>${fmt(sellerCosts + buyerCosts)}</td></tr>
     </tbody>
