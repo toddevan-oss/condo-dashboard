@@ -215,7 +215,6 @@ td:last-child, th:last-child { text-align: right; }
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <a class="ext-link link-zillow" href="https://www.zillow.com/b/1110-6th-st-nw-washington-dc-9PZjq7/" target="_blank">↗ Zillow</a>
         <a class="ext-link link-redfin" href="https://www.redfin.com/DC/Washington/1110-6th-St-NW-20001/unit-2/home/177864723" target="_blank">↗ Redfin</a>
-        <a class="ext-link link-compass" href="https://www.compass.com/homedetails/1110-6th-St-NW-Unit-2-Washington-DC-20001/957217558186761689_lid/" target="_blank">↗ Compass</a>
       </div>
     </div>
     <div id="val-rows"></div>
@@ -226,7 +225,6 @@ td:last-child, th:last-child { text-align: right; }
     <div class="card-grid-2">
       <div class="input-group"><label>Zillow Zestimate ($)</label><input type="number" id="v-zillow" placeholder="Enter from Zillow.com" oninput="saveAndRender()"></div>
       <div class="input-group"><label>Redfin estimate ($)</label><input type="number" id="v-redfin" placeholder="Enter from Redfin.com" oninput="saveAndRender()"></div>
-      <div class="input-group"><label>Compass estimate ($)</label><input type="number" id="v-compass" placeholder="Enter from Compass.com" oninput="saveAndRender()"></div>
       <div class="input-group">
         <label>My estimate ($) <span style="color:var(--green);font-size:10px;">★ owner</span></label>
         <input type="number" id="v-my" placeholder="Your best estimate" oninput="saveAndRender()">
@@ -238,7 +236,6 @@ td:last-child, th:last-child { text-align: right; }
         <select id="val-selector" onchange="saveAndRender()">
           <option value="zillow">Zillow Zestimate</option>
           <option value="redfin">Redfin estimate</option>
-          <option value="compass">Compass estimate</option>
           <option value="my" selected>My estimate</option>
         </select>
       </div>
@@ -256,14 +253,14 @@ td:last-child, th:last-child { text-align: right; }
     <table>
       <thead><tr><th>Date</th><th>Event</th><th>Value</th><th style="text-align:left">Notes</th></tr></thead>
       <tbody>
-        <tr><td>Apr 2018</td><td>Purchase — Unit #2</td><td>$850,000</td><td style="text-align:left;color:var(--text-muted);">Original purchase price, primary residence</td></tr>
-        <tr><td>2019</td><td>Sale — Unit #3</td><td>$740,000</td><td style="text-align:left;color:var(--text-muted);">In-building comp</td></tr>
-        <tr><td>Mar 2019</td><td>Sale — Unit #4</td><td>$877,000</td><td style="text-align:left;color:var(--text-muted);">In-building comp</td></tr>
+        <tr><td>Mar 2026</td><td>My estimate — Unit #2</td><td id="history-my">$950,000</td><td style="text-align:left;color:var(--text-muted);">Owner's current estimate</td></tr>
+        <tr><td>2023</td><td>Sale — Unit #5</td><td>$810,000</td><td style="text-align:left;color:var(--text-muted);">In-building comp</td></tr>
+        <tr><td>Dec 2021</td><td>Sale — Unit #6</td><td>$905,000</td><td style="text-align:left;color:var(--text-muted);">In-building comp</td></tr>
         <tr><td>Sep 2020</td><td>Refi appraisal — Unit #2</td><td>$925,000</td><td style="text-align:left;color:var(--text-muted);">Basis for 2.875% refi, 80% LTV</td></tr>
         <tr><td>Sep 2020</td><td>Sale — Unit #1</td><td>$756,000</td><td style="text-align:left;color:var(--text-muted);">In-building comp</td></tr>
-        <tr><td>Dec 2021</td><td>Sale — Unit #6</td><td>$905,000</td><td style="text-align:left;color:var(--text-muted);">In-building comp</td></tr>
-        <tr><td>2023</td><td>Sale — Unit #5</td><td>$810,000</td><td style="text-align:left;color:var(--text-muted);">In-building comp</td></tr>
-        <tr><td>Mar 2026</td><td>My estimate — Unit #2</td><td id="history-my">$950,000</td><td style="text-align:left;color:var(--text-muted);">Owner's current estimate</td></tr>
+        <tr><td>Mar 2019</td><td>Sale — Unit #4</td><td>$877,000</td><td style="text-align:left;color:var(--text-muted);">In-building comp</td></tr>
+        <tr><td>2019</td><td>Sale — Unit #3</td><td>$740,000</td><td style="text-align:left;color:var(--text-muted);">In-building comp</td></tr>
+        <tr><td>Apr 2018</td><td>Purchase — Unit #2</td><td>$850,000</td><td style="text-align:left;color:var(--text-muted);">Original purchase price, primary residence</td></tr>
       </tbody>
     </table>
   </div>
@@ -316,7 +313,14 @@ td:last-child, th:last-child { text-align: right; }
       <div class="input-group"><label>Tenant name</label><input type="text" id="t-name" placeholder="Tenant name" oninput="saveAndRender()"></div>
       <div class="input-group"><label>Monthly rent ($)</label><input type="number" id="t-rent" placeholder="4500" oninput="saveAndRender()"></div>
       <div class="input-group"><label>Lease start</label><input type="date" id="t-start" oninput="saveAndRender()"></div>
-      <div class="input-group"><label>Lease end</label><input type="date" id="t-end" oninput="saveAndRender()" placeholder="Leave blank if month-to-month"></div>
+      <div class="input-group">
+        <label>Lease type</label>
+        <select id="t-lease-type" onchange="toggleLeaseEnd();saveAndRender()">
+          <option value="m2m">Month-to-month</option>
+          <option value="fixed">Fixed term</option>
+        </select>
+      </div>
+      <div class="input-group" id="t-end-group" style="display:none;"><label>Lease end</label><input type="date" id="t-end" oninput="saveAndRender()"></div>
       <div class="input-group"><label>Email</label><input type="text" id="t-email" placeholder="tenant@email.com" oninput="saveAndRender()"></div>
       <div class="input-group"><label>Phone</label><input type="text" id="t-phone" placeholder="(555) 000-0000" oninput="saveAndRender()"></div>
     </div>
@@ -442,9 +446,8 @@ const DEFAULTS = {
     {date:'2022-09-27',cat:'Loan',desc:'AC replacement (EnerBank)',amt:7550},
   ],
   rentHistory: [
-    {period:'Apr 2018–2021',rent:0,notes:'Owner-occupied primary residence'},
-    {period:'2022–2023',rent:4250,notes:'First tenant (investment property)'},
-    {period:'2024–present',rent:4500,notes:'Current lease'},
+    {period:'2022–2023',rent:4250,notes:'First tenant'},
+    {period:'2024–present',rent:4500,notes:'Current tenant (month-to-month)'},
   ]
 };
 
@@ -529,11 +532,16 @@ function toddIRRCashFlows(saleYear, netProceeds) {
   return cfs;
 }
 
+function toggleLeaseEnd() {
+  const isFixed = document.getElementById('t-lease-type').value === 'fixed';
+  document.getElementById('t-end-group').style.display = isFixed ? 'flex' : 'none';
+  if (!isFixed) document.getElementById('t-end').value = '';
+}
+
 function saveAndRender() {
   // Read valuation inputs
   STATE.valuations.zillow  = parseFloat(document.getElementById('v-zillow').value) || 0;
   STATE.valuations.redfin  = parseFloat(document.getElementById('v-redfin').value) || 0;
-  STATE.valuations.compass = parseFloat(document.getElementById('v-compass').value) || 0;
   STATE.valuations.my      = parseFloat(document.getElementById('v-my').value) || 0;
   STATE.activeValSource = document.getElementById('val-selector').value;
   // Tenant
@@ -573,7 +581,6 @@ function renderPanel(name) {
 function populateInputs() {
   document.getElementById('v-zillow').value  = STATE.valuations.zillow  || '';
   document.getElementById('v-redfin').value  = STATE.valuations.redfin  || '';
-  document.getElementById('v-compass').value = STATE.valuations.compass || '';
   document.getElementById('v-my').value      = STATE.valuations.my      || '';
   document.getElementById('val-selector').value = STATE.activeValSource;
   document.getElementById('t-name').value  = STATE.tenant.name;
@@ -582,6 +589,9 @@ function populateInputs() {
   document.getElementById('t-end').value   = STATE.tenant.end;
   document.getElementById('t-email').value = STATE.tenant.email;
   document.getElementById('t-phone').value = STATE.tenant.phone;
+  const leaseType = STATE.tenant.end ? 'fixed' : 'm2m';
+  document.getElementById('t-lease-type').value = leaseType;
+  document.getElementById('t-end-group').style.display = leaseType === 'fixed' ? 'flex' : 'none';
 }
 
 // ─── RETURNS ─────────────────────────────────────────────────────
@@ -600,11 +610,16 @@ function renderReturns() {
 
   document.getElementById('returns-sub').textContent = `Using ${srcLabel} (${fmt(cv)}) · updated ${new Date().toLocaleDateString('en-US',{month:'short',year:'numeric'})}`;
 
+  // IRR from rental start (2022) to today using current equity as terminal value
+  const irrCFs = toddIRRCashFlows(2026, equity);
+  const irr = calcIRR(irrCFs);
+  const irrStr = irr !== null ? (irr * 100).toFixed(1) + '%' : 'N/A';
+
   document.getElementById('returns-metrics').innerHTML = `
     <div class="metric"><div class="metric-label">Current equity</div><div class="metric-value">${fmt(equity)}</div><div class="metric-sub">${fmt(cv)} est. value</div></div>
     <div class="metric"><div class="metric-label">Annual NOI</div><div class="metric-value">${fmt(noi)}</div><div class="metric-sub">${fmt(noi/12)}/mo</div></div>
     <div class="metric"><div class="metric-label">Cash flow</div><div class="metric-value ${cfads>=0?'pos':'neg'}">${fmtd(cfads)}</div><div class="metric-sub">${fmtd(cfads/12)}/mo after debt</div></div>
-    <div class="metric"><div class="metric-label">Cash-on-cash</div><div class="metric-value">${pct(coc)}</div><div class="metric-sub">Cap rate ${pct(capRate)}</div></div>
+    <div class="metric"><div class="metric-label">Cash-on-cash / IRR</div><div class="metric-value">${pct(coc)}</div><div class="metric-sub">IRR since rental: <strong>${irrStr}</strong></div></div>
   `;
 
   const cfYears = [2022,2023,2024,2025];
@@ -658,7 +673,6 @@ function renderValuation() {
   const sources = [
     { key:'zillow',  label:'Zillow Zestimate',  color:'#1a4a8a' },
     { key:'redfin',  label:'Redfin estimate',   color:'#c0392b' },
-    { key:'compass', label:'Compass estimate',  color:'#3a3a3a' },
     { key:'my',      label:'My estimate',       color:'#1a7a52' },
   ];
   const allVals = Object.values(vals).filter(v=>v>0);
@@ -963,6 +977,9 @@ function renderFamilySale() {
   const totalStyle = 'display:flex;justify-content:space-between;padding:7px 0;font-size:13px;font-weight:600;';
   const netStyle = 'display:flex;justify-content:space-between;padding:8px 0 0;font-size:15px;font-weight:700;border-top:2px solid var(--border-strong);margin-top:2px;';
 
+  const toddFamilyIRR = calcIRR(toddIRRCashFlows(2026, sellerNet));
+  const toddFamilyIRRStr = toddFamilyIRR !== null ? (toddFamilyIRR * 100).toFixed(1) + '%' : 'N/A';
+
   // Seller side: family
   document.getElementById('fs-seller-metrics').innerHTML = `
     <div style="${rowStyle}"><span style="color:var(--text-muted);">Sale price</span><span>${fmt(salePrice)}</span></div>
@@ -970,10 +987,8 @@ function renderFamilySale() {
     <div style="${rowStyle}"><span style="color:var(--text-muted);">Legal fees (your side)</span><span class="neg">(${fmt(legalFees)})</span></div>
     <div style="${totalStyle}"><span style="color:var(--text-muted);">Subtotal costs</span><span class="neg">(${fmt(sellerCosts)})</span></div>
     <div style="${rowStyle}"><span style="color:var(--text-muted);">Mortgage payoff</span><span class="neg">(${fmt(STATE.loanBalance)})</span></div>
-  const toddFamilyIRR = calcIRR(toddIRRCashFlows(2026, sellerNet));
-  const toddFamilyIRRStr = toddFamilyIRR !== null ? (toddFamilyIRR * 100).toFixed(1) + '%' : 'N/A';
     <div style="${netStyle}"><span>Net to you</span><span class="pos">${fmt(sellerNet)}</span></div>
-    <div style="margin-top:10px;padding:8px 10px;background:var(--blue-bg);border-radius:var(--radius-sm);font-size:12px;color:var(--blue);font-weight:600;">Your IRR since 2017: <strong>${toddFamilyIRRStr}</strong></div>
+    <div style="margin-top:10px;padding:8px 10px;background:var(--blue-bg);border-radius:var(--radius-sm);font-size:12px;color:var(--blue);font-weight:600;">Your IRR (rental period): <strong>${toddFamilyIRRStr}</strong></div>
   `;
 
   const toddMarketIRR = calcIRR(toddIRRCashFlows(2026, marketNetDetailed));
@@ -988,7 +1003,7 @@ function renderFamilySale() {
     <div style="${totalStyle}"><span style="color:var(--text-muted);">Subtotal costs</span><span class="neg">(${fmt(marketCostDetailed)})</span></div>
     <div style="${rowStyle}"><span style="color:var(--text-muted);">Mortgage payoff</span><span class="neg">(${fmt(STATE.loanBalance)})</span></div>
     <div style="${netStyle}"><span>Net to you</span><span>${fmt(marketNetDetailed)}</span></div>
-    <div style="margin-top:8px;padding:8px 10px;background:var(--blue-bg);border-radius:var(--radius-sm);font-size:12px;color:var(--blue);font-weight:600;">Your IRR since 2017: <strong>${toddMarketIRRStr}</strong></div>
+    <div style="margin-top:8px;padding:8px 10px;background:var(--blue-bg);border-radius:var(--radius-sm);font-size:12px;color:var(--blue);font-weight:600;">Your IRR (rental period): <strong>${toddMarketIRRStr}</strong></div>
     <div style="margin-top:6px;padding:8px 10px;background:var(--green-bg);border-radius:var(--radius-sm);font-size:12px;color:var(--green);font-weight:600;">Family sale puts <strong>${fmt(savingsDetailed)}</strong> more in your pocket</div>
   `;
 
