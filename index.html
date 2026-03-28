@@ -191,6 +191,7 @@ td:last-child, th:last-child { text-align: right; }
   <div class="sidebar-header">
     <div class="sidebar-address">1110 6th St NE<br>Unit #2, Washington DC</div>
     <div class="sidebar-sub">Investment Dashboard</div>
+    <button onclick="copyShareLink()" style="margin-top:10px;width:100%;padding:6px 10px;font-size:11px;font-weight:600;background:var(--surface2);border:1px solid var(--border-strong);border-radius:var(--radius-sm);cursor:pointer;color:var(--text-muted);font-family:'DM Sans',sans-serif;letter-spacing:0.02em;" title="Copy a link that loads this exact state on any device">⇄ Copy sync link</button>
   </div>
   <div class="nav-section">Performance</div>
   <div class="nav-item active" onclick="showPanel('returns')"><span class="nav-icon">◈</span> Returns</div>
@@ -502,14 +503,42 @@ function loadState() {
   }
 }
 
+function showToast(msg) {
+  const toast = document.getElementById('save-toast');
+  toast.textContent = msg || 'Saved';
+  toast.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+}
+
 function saveState() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE));
-    const toast = document.getElementById('save-toast');
-    toast.classList.add('show');
-    clearTimeout(window._toastTimer);
-    window._toastTimer = setTimeout(() => toast.classList.remove('show'), 1500);
+    showToast('Saved');
   } catch(e) {}
+}
+
+// ─── SYNC LINK ───────────────────────────────────────────────────
+const encodeState = s => btoa(unescape(encodeURIComponent(JSON.stringify(s))));
+const decodeState = str => JSON.parse(decodeURIComponent(escape(atob(str))));
+
+// On load: if URL has #s=... apply it to localStorage then clean the URL
+(function applyHashState() {
+  const hash = location.hash;
+  if (!hash.startsWith('#s=')) return;
+  try {
+    const decoded = decodeState(hash.slice(3));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(decoded));
+    history.replaceState(null, '', location.pathname + location.search);
+  } catch(e) {}
+})();
+
+function copyShareLink() {
+  const url = location.origin + location.pathname + '#s=' + encodeState(STATE);
+  navigator.clipboard.writeText(url).then(
+    () => showToast('✓ Sync link copied — open on any device'),
+    () => { prompt('Copy this link:', url); }
+  );
 }
 
 function initSliders() {
