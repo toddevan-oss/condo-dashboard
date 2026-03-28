@@ -52,7 +52,9 @@ No package.json, no build tools, no framework. Do not create additional files un
 - **Current loan balance:** ~$648,874
 - **HOA:** $500/month
 - **Maintenance reserve:** $300/month (budgeted)
-- **Equity invested (basis):** $118,360.23
+- **Equity invested (basis):** $118,360.23 (original down payment)
+- **Equity at rental conversion (2022):** ~$181,000 (based on $900k estimated value minus loan balance at that time)
+- **IRR basis:** $181,000 (equity when property converted to rental, not original down payment)
 - **Current rent:** $4,500/month
 - **Lease:** Month-to-month (no fixed end date)
 

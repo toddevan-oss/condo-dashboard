@@ -404,6 +404,7 @@ const DEFAULTS = {
   taxInsurance: 608.48,
   maintReserve: 300,
   equityInvested: 118360.23,
+  rentalStartValue: 900000,  // estimated value when converted to rental (2022)
   valuations: { zillow: 0, redfin: 0, compass: 0, my: 950000 },
   activeValSource: 'my',
   tenant: { name: '', rent: 4500, start: '2024-06-01', end: '', email: '', phone: '' },
@@ -493,9 +494,17 @@ function toddAnnualCF(year) {
 }
 
 // Build Todd's IRR cash flows from 2022 (rental start) to sale year
-// Equity at time of conversion (2022) is used as the initial investment basis
+// Uses equity at time of rental conversion as initial investment basis
 function toddIRRCashFlows(saleYear, netProceeds) {
-  const cfs = [-STATE.equityInvested]; // t=0: equity basis at rental conversion
+  // Refi was Sep 2020 at ~$740k. Rental start ~Jan 2022 = 16 months later.
+  // Calculate loan balance at rental start to derive real equity basis.
+  const piPayment = STATE.payment - STATE.taxInsurance; // P&I only
+  const r = STATE.rate / 12;
+  let balAtRentalStart = 740000;
+  for (let m = 0; m < 16; m++) balAtRentalStart -= piPayment - balAtRentalStart * r;
+  const rentalEquityBasis = STATE.rentalStartValue - balAtRentalStart;
+
+  const cfs = [-rentalEquityBasis]; // t=0: equity at rental conversion
   for (let y = 2022; y < saleYear; y++) cfs.push(toddAnnualCF(y));
   cfs.push(toddAnnualCF(saleYear) + netProceeds); // terminal year: CF + proceeds
   return cfs;
