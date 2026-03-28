@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1110 6th St NE #2 — Investment Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg: #f7f6f3;
+  --surface: #ffffff;
+  --surface2: #f0efe9;
+  --border: rgba(0,0,0,0.09);
+  --border-strong: rgba(0,0,0,0.18);
+  --text: #1a1a18;
+  --text-muted: #6b6b63;
+  --text-faint: #9b9b90;
+  --green: #1a7a52;
+  --green-bg: #e8f5ee;
+  --red: #c0392b;
+  --red-bg: #fdf0ee;
+  --amber: #8a5c00;
+  --amber-bg: #fef6e4;
+  --blue: #1a4a8a;
+  --blue-bg: #e8f0fc;
+  --purple: #4a3a8a;
+  --purple-bg: #f0eefb;
+  --radius: 10px;
+  --radius-sm: 6px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* Layout */
+.app { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+.sidebar { background: var(--surface); border-right: 1px solid var(--border); padding: 28px 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+.main { padding: 32px 36px; overflow-x: hidden; }
+
+/* Sidebar */
+.sidebar-header { padding: 0 20px 24px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+.sidebar-address { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.3; }
+.sidebar-sub { font-size: 11px; color: var(--text-faint); margin-top: 3px; font-family: 'DM Mono', monospace; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 20px; font-size: 13px; color: var(--text-muted); cursor: pointer; border-left: 2px solid transparent; transition: all 0.15s; }
+.nav-item:hover { color: var(--text); background: var(--surface2); }
+.nav-item.active { color: var(--text); border-left-color: var(--text); background: var(--surface2); font-weight: 500; }
+.nav-icon { font-size: 15px; width: 18px; text-align: center; }
+.nav-section { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-faint); padding: 16px 20px 6px; }
+
+/* Panels */
+.panel { display: none; }
+.panel.active { display: block; }
+.page-title { font-size: 22px; font-weight: 600; margin-bottom: 6px; }
+.page-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 28px; }
+
+/* Metric cards */
+.metrics { display: grid; gap: 12px; margin-bottom: 24px; }
+.metrics-4 { grid-template-columns: repeat(4, 1fr); }
+.metrics-3 { grid-template-columns: repeat(3, 1fr); }
+.metrics-2 { grid-template-columns: repeat(2, 1fr); }
+.metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
+.metric-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); font-weight: 500; margin-bottom: 6px; }
+.metric-value { font-size: 24px; font-weight: 600; font-family: 'DM Mono', monospace; letter-spacing: -0.02em; }
+.metric-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.pos { color: var(--green); }
+.neg { color: var(--red); }
+
+/* Cards */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 22px; margin-bottom: 16px; }
+.card-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-faint); margin-bottom: 16px; }
+.card-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+
+/* Tables */
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-faint); border-bottom: 1px solid var(--border); }
+td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text); }
+tr:last-child td { border-bottom: none; }
+td:last-child, th:last-child { text-align: right; }
+.total-row td { font-weight: 600; border-top: 1px solid var(--border-strong); border-bottom: none; background: var(--surface2); }
+
+/* Forms */
+.input-group { display: flex; flex-direction: column; gap: 5px; }
+.input-group label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+.input-group input, .input-group select { border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 7px 10px; font-size: 13px; font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); outline: none; transition: border 0.15s; }
+.input-group input:focus, .input-group select:focus { border-color: var(--text); }
+.input-note { font-size: 11px; color: var(--text-faint); }
+
+/* Badges */
+.badge { display: inline-block; padding: 3px 9px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+.badge-green { background: var(--green-bg); color: var(--green); }
+.badge-red { background: var(--red-bg); color: var(--red); }
+.badge-amber { background: var(--amber-bg); color: var(--amber); }
+.badge-blue { background: var(--blue-bg); color: var(--blue); }
+.badge-purple { background: var(--purple-bg); color: var(--purple); }
+
+/* Buttons */
+.btn { border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 7px 14px; font-size: 12px; font-family: 'DM Sans', sans-serif; background: var(--surface); color: var(--text); cursor: pointer; transition: all 0.15s; font-weight: 500; }
+.btn:hover { background: var(--surface2); }
+.btn-primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+.btn-primary:hover { opacity: 0.85; }
+
+/* Sliders */
+.slider-row { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.slider-row label { font-size: 13px; color: var(--text-muted); min-width: 180px; }
+.slider-row input[type=range] { flex: 1; accent-color: var(--text); }
+.slider-val { font-size: 13px; font-weight: 600; font-family: 'DM Mono', monospace; min-width: 50px; text-align: right; }
+
+/* Chart wrapper */
+.chart-wrap { position: relative; width: 100%; height: 240px; margin-top: 8px; }
+
+/* Valuation bars */
+.val-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.val-row:last-child { border-bottom: none; }
+.val-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.val-label { font-size: 13px; color: var(--text-muted); flex: 1; }
+.val-amount { font-size: 15px; font-weight: 600; font-family: 'DM Mono', monospace; }
+.val-bar-track { background: var(--surface2); border-radius: 3px; height: 5px; margin-top: 4px; }
+.val-bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+
+/* Expense log */
+.exp-row { display: grid; grid-template-columns: 80px 100px 1fr 90px; gap: 10px; font-size: 12px; padding: 7px 0; border-bottom: 1px solid var(--border); align-items: center; }
+.exp-row:last-child { border-bottom: none; }
+.yr-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-faint); margin: 12px 0 4px; display: flex; justify-content: space-between; }
+
+/* Links */
+.ext-link { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; padding: 4px 10px; border-radius: var(--radius-sm); border: 1px solid; text-decoration: none; font-weight: 500; transition: opacity 0.15s; }
+.ext-link:hover { opacity: 0.75; }
+.link-zillow { background: var(--blue-bg); color: var(--blue); border-color: #b5c8f0; }
+.link-redfin { background: var(--red-bg); color: var(--red); border-color: #f0b5b5; }
+.link-compass { background: var(--surface2); color: var(--text); border-color: var(--border-strong); }
+
+/* Save indicator */
+.save-toast { position: fixed; bottom: 24px; right: 24px; background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: var(--radius); font-size: 13px; font-weight: 500; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; }
+.save-toast.show { opacity: 1; }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { position: static; height: auto; display: flex; flex-wrap: wrap; gap: 0; padding: 16px 0 0; }
+  .sidebar-header { padding: 0 16px 12px; width: 100%; }
+  .nav-section { display: none; }
+  .nav-item { padding: 8px 14px; font-size: 12px; border-left: none; border-bottom: 2px solid transparent; }
+  .nav-item.active { border-left: none; border-bottom-color: var(--text); }
+  .main { padding: 20px 16px; }
+  .metrics-4 { grid-template-columns: repeat(2, 1fr); }
+  .card-grid-2 { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<nav class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-address">1110 6th St NE<br>Unit #2, Washington DC</div>
+    <div class="sidebar-sub">Investment Dashboard</div>
+  </div>
+  <div class="nav-section">Performance</div>
+  <div class="nav-item active" onclick="showPanel('returns')"><span class="nav-icon">◈</span> Returns</div>
+  <div class="nav-item" onclick="showPanel('valuation')"><span class="nav-icon">◉</span> Valuation</div>
+  <div class="nav-section">Operations</div>
+  <div class="nav-item" onclick="showPanel('opex')"><span class="nav-icon">◫</span> Operating Costs</div>
+  <div class="nav-item" onclick="showPanel('tenant')"><span class="nav-icon">◷</span> Tenant & Lease</div>
+  <div class="nav-section">Planning</div>
+  <div class="nav-item" onclick="showPanel('scenario')"><span class="nav-icon">◬</span> Scenarios</div>
+</nav>
+
+<main class="main">
+
+<!-- RETURNS -->
+<div id="panel-returns" class="panel active">
+  <div class="page-title">Returns</div>
+  <div class="page-sub" id="returns-sub">Using my estimate · updated Mar 2026</div>
+  <div class="metrics metrics-4" id="returns-metrics"></div>
+  <div class="card-grid-2">
+    <div class="card"><div class="card-title">Annual cash flow</div><div class="chart-wrap"><canvas id="cfChart"></canvas></div></div>
+    <div class="card"><div class="card-title">Equity buildup</div><div class="chart-wrap"><canvas id="eqChart"></canvas></div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">P&L summary — 2025</div>
+    <table id="pnl-table"></table>
+  </div>
+</div>
+
+<!-- VALUATION -->
+<div id="panel-valuation" class="panel">
+  <div class="page-title">Valuation</div>
+  <div class="page-sub">Compare estimates · select which one drives all calculations</div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:18px;">
+      <div>
+        <div class="card-title" style="margin:0 0 4px;">Automated estimates</div>
+        <div style="font-size:12px;color:var(--text-faint);">Zillow doesn't expose Zestimate via API — open the link, read it, enter it below.</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <a class="ext-link link-zillow" href="https://www.zillow.com/b/1110-6th-st-nw-washington-dc-9PZjq7/" target="_blank">↗ Zillow</a>
+        <a class="ext-link link-redfin" href="https://www.redfin.com/DC/Washington/1110-6th-St-NW-20001/unit-2/home/177864723" target="_blank">↗ Redfin</a>
+        <a class="ext-link link-compass" href="https://www.compass.com/homedetails/1110-6th-St-NW-Unit-2-Washington-DC-20001/957217558186761689_lid/" target="_blank">↗ Compass</a>
+      </div>
+    </div>
+    <div id="val-rows"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Update estimates</div>
+    <div class="card-grid-2">
+      <div class="input-group"><label>Zillow Zestimate ($)</label><input type="number" id="v-zillow" placeholder="Enter from Zillow.com" oninput="saveAndRender()"></div>
+      <div class="input-group"><label>Redfin estimate ($)</label><input type="number" id="v-redfin" placeholder="Enter from Redfin.com" oninput="saveAndRender()"></div>
+      <div class="input-group"><label>Compass estimate ($)</label><input type="number" id="v-compass" placeholder="Enter from Compass.com" oninput="saveAndRender()"></div>
+      <div class="input-group">
+        <label>My estimate ($) <span style="color:var(--green);font-size:10px;">★ owner</span></label>
+        <input type="number" id="v-my" placeholder="Your best estimate" oninput="saveAndRender()">
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;padding-top:12px;border-top:1px solid var(--border);margin-top:4px;">
+      <div class="input-group" style="flex:1;">
+        <label>Active estimate for calculations</label>
+        <select id="val-selector" onchange="saveAndRender()">
+          <option value="zillow">Zillow Zestimate</option>
+          <option value="redfin">Redfin estimate</option>
+          <option value="compass">Compass estimate</option>
+          <option value="my" selected>My estimate</option>
+        </select>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:11px;color:var(--text-faint);margin-bottom:4px;">Active value</div>
+        <div style="font-size:26px;font-weight:700;font-family:'DM Mono',monospace;" id="active-val-display">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="metrics metrics-3" id="val-metrics"></div>
+
+  <div class="card">
+    <div class="card-title">Value history</div>
+    <table>
+      <thead><tr><th>Date</th><th>Event</th><th>Value</th><th style="text-align:left">Notes</th></tr></thead>
+      <tbody>
+        <tr><td>2017</td><td>Purchase — Unit #2</td><td>$850,000</td><td style="text-align:left;color:var(--text-muted);">Original purchase price</td></tr>
+        <tr><td>2019</td><td>Sale — Unit #3</td><td>$740,000</td><td style="text-align:left;color:var(--text-muted);">In-building comp</td></tr>
+        <tr><td>Mar 2019</td><td>Sale — Unit #4</td><td>$877,000</td><td style="text-align:left;color:var(--text-muted);">In-building comp</td></tr>
+        <tr><td>Sep 2020</td><td>Refi appraisal — Unit #2</td><td>$925,000</td><td style="text-align:left;color:var(--text-muted);">Basis for 2.875% refi, 80% LTV</td></tr>
+        <tr><td>Sep 2020</td><td>Sale — Unit #1</td><td>$756,000</td><td style="text-align:left;color:var(--text-muted);">In-building comp</td></tr>
+        <tr><td>Dec 2021</td><td>Sale — Unit #6</td><td>$905,000</td><td style="text-align:left;color:var(--text-muted);">In-building comp</td></tr>
+        <tr><td>2023</td><td>Sale — Unit #5</td><td>$810,000</td><td style="text-align:left;color:var(--text-muted);">In-building comp</td></tr>
+        <tr><td>Mar 2026</td><td>My estimate — Unit #2</td><td id="history-my">$950,000</td><td style="text-align:left;color:var(--text-muted);">Owner's current estimate</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- OPEX -->
+<div id="panel-opex" class="panel">
+  <div class="page-title">Operating Costs</div>
+  <div class="page-sub">Fixed monthly costs plus maintenance log since 2022</div>
+  <div class="metrics metrics-3" id="opex-metrics"></div>
+  <div class="card">
+    <div class="card-title">Monthly fixed breakdown</div>
+    <table id="opex-table"></table>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div class="card-title" style="margin:0;">Maintenance & expense log</div>
+      <button class="btn" onclick="toggleAddForm()">+ Add expense</button>
+    </div>
+    <div id="add-form" style="display:none;background:var(--bg);border-radius:var(--radius-sm);padding:14px;margin-bottom:14px;border:1px solid var(--border);">
+      <div class="card-grid-2">
+        <div class="input-group"><label>Date</label><input type="date" id="exp-date"></div>
+        <div class="input-group"><label>Category</label>
+          <select id="exp-cat">
+            <option>Repair</option><option>Maintenance</option><option>Appliances</option><option>Turn Over</option><option>HOA</option><option>Other</option>
+          </select>
+        </div>
+        <div class="input-group"><label>Description</label><input type="text" id="exp-desc" placeholder="What was repaired/replaced?"></div>
+        <div class="input-group"><label>Amount ($)</label><input type="number" id="exp-amt" placeholder="0.00"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:4px;">
+        <button class="btn btn-primary" onclick="addExpense()">Save</button>
+        <button class="btn" onclick="toggleAddForm()">Cancel</button>
+      </div>
+    </div>
+    <div id="expense-log"></div>
+  </div>
+</div>
+
+<!-- TENANT -->
+<div id="panel-tenant" class="panel">
+  <div class="page-title">Tenant & Lease</div>
+  <div class="page-sub">Current occupancy details and rent history</div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div class="card-title" style="margin:0;">Current tenant</div>
+      <span class="badge badge-green" id="lease-badge">Active</span>
+    </div>
+    <div class="card-grid-2">
+      <div class="input-group"><label>Tenant name</label><input type="text" id="t-name" placeholder="Tenant name" oninput="saveAndRender()"></div>
+      <div class="input-group"><label>Monthly rent ($)</label><input type="number" id="t-rent" placeholder="4500" oninput="saveAndRender()"></div>
+      <div class="input-group"><label>Lease start</label><input type="date" id="t-start" oninput="saveAndRender()"></div>
+      <div class="input-group"><label>Lease end</label><input type="date" id="t-end" oninput="saveAndRender()" placeholder="Leave blank if month-to-month"></div>
+      <div class="input-group"><label>Email</label><input type="text" id="t-email" placeholder="tenant@email.com" oninput="saveAndRender()"></div>
+      <div class="input-group"><label>Phone</label><input type="text" id="t-phone" placeholder="(555) 000-0000" oninput="saveAndRender()"></div>
+    </div>
+  </div>
+  <div class="metrics metrics-3" id="tenant-metrics"></div>
+  <div class="card">
+    <div class="card-title">Rent history</div>
+    <table id="rent-history-table"></table>
+  </div>
+</div>
+
+<!-- SCENARIO -->
+<div id="panel-scenario" class="panel">
+  <div class="page-title">Scenarios</div>
+  <div class="page-sub" id="scenario-sub">Adjust assumptions to model future returns</div>
+  <div class="card">
+    <div class="card-title">Assumptions</div>
+    <div class="slider-row"><label>Annual rent growth</label><input type="range" min="0" max="8" step="0.5" value="2" id="sl-rent" oninput="updateScenario()"><span class="slider-val" id="sv-rent">2.0%</span></div>
+    <div class="slider-row"><label>Annual appreciation</label><input type="range" min="0" max="10" step="0.5" value="3" id="sl-appr" oninput="updateScenario()"><span class="slider-val" id="sv-appr">3.0%</span></div>
+    <div class="slider-row"><label>Sale year</label><input type="range" min="2026" max="2045" step="1" value="2030" id="sl-sale" oninput="updateScenario()"><span class="slider-val" id="sv-sale">2030</span></div>
+    <div class="slider-row"><label>Selling costs</label><input type="range" min="4" max="8" step="0.5" value="6" id="sl-sell" oninput="updateScenario()"><span class="slider-val" id="sv-sell">6.0%</span></div>
+    <div class="slider-row"><label>Vacancy rate</label><input type="range" min="0" max="15" step="1" value="0" id="sl-vac" oninput="updateScenario()"><span class="slider-val" id="sv-vac">0%</span></div>
+  </div>
+  <div class="metrics metrics-4" id="scenario-metrics"></div>
+  <div class="card"><div class="card-title">Projected equity & cumulative cash flow</div><div class="chart-wrap" style="height:280px;"><canvas id="scenChart"></canvas></div></div>
+</div>
+
+</main>
+</div>
+
+<div class="save-toast" id="save-toast">Saved</div>
+
+<script>
+// ─── DEFAULT STATE ───────────────────────────────────────────────
+const DEFAULTS = {
+  purchasePrice: 850000,
+  loanBalance: 648874,
+  rate: 0.02875,
+  payment: 3678.68,
+  monthlyRent: 4500,
+  hoa: 500,
+  taxInsurance: 608.48,
+  maintReserve: 300,
+  equityInvested: 118360.23,
+  valuations: { zillow: 0, redfin: 0, compass: 0, my: 950000 },
+  activeValSource: 'my',
+  tenant: { name: '', rent: 4500, start: '2024-06-01', end: '', email: '', phone: '' },
+  expenses: [
+    {date:'2024-05-21',cat:'Repair',desc:'Toilet gasket replacement',amt:165},
+    {date:'2024-06-01',cat:'Repair',desc:'Special assessment — roof',amt:4277.61},
+    {date:'2024-07-15',cat:'Repair',desc:'Peppermint test (smell in bathroom)',amt:238},
+    {date:'2023-04-20',cat:'Repair',desc:'AC leak — Roto Rooter plumbing',amt:1233.10},
+    {date:'2023-05-26',cat:'Repair',desc:'AC leak — floor damage',amt:600},
+    {date:'2023-05-21',cat:'Repair',desc:'AC leak — drywall damage',amt:1650},
+    {date:'2023-05-28',cat:'Turn Over',desc:'Lights, filters, hardware, putty',amt:63.44},
+    {date:'2023-05-29',cat:'Turn Over',desc:'Water filter',amt:55.63},
+    {date:'2022-04-19',cat:'Appliances',desc:'New range (defective original)',amt:1334.85},
+    {date:'2022-08-08',cat:'Maintenance',desc:'HVAC — Freon top off',amt:318.98},
+    {date:'2022-06-06',cat:'Maintenance',desc:'HVAC — Freon top off',amt:232.24},
+    {date:'2022-09-27',cat:'Loan',desc:'AC replacement (EnerBank)',amt:7550},
+  ],
+  rentHistory: [
+    {period:'2017–2020',rent:3500,notes:'Original tenant'},
+    {period:'2021',rent:3695,notes:'Lease renewal'},
+    {period:'2022–2023',rent:4250,notes:'New tenant'},
+    {period:'2024–present',rent:4500,notes:'Current lease'},
+  ]
+};
+
+// ─── LOCALSTORAGE ────────────────────────────────────────────────
+const STORAGE_KEY = 'condo_1110_6th_v1';
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return JSON.parse(JSON.stringify(DEFAULTS));
+    const parsed = JSON.parse(saved);
+    // Deep merge to pick up any new default fields
+    return {
+      ...DEFAULTS,
+      ...parsed,
+      valuations: { ...DEFAULTS.valuations, ...(parsed.valuations||{}) },
+      tenant: { ...DEFAULTS.tenant, ...(parsed.tenant||{}) },
+      expenses: parsed.expenses || DEFAULTS.expenses,
+      rentHistory: parsed.rentHistory || DEFAULTS.rentHistory,
+    };
+  } catch(e) {
+    return JSON.parse(JSON.stringify(DEFAULTS));
+  }
+}
+
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE));
+    const toast = document.getElementById('save-toast');
+    toast.classList.add('show');
+    clearTimeout(window._toastTimer);
+    window._toastTimer = setTimeout(() => toast.classList.remove('show'), 1500);
+  } catch(e) {}
+}
+
+let STATE = loadState();
+
+// ─── HELPERS ─────────────────────────────────────────────────────
+const fmt = n => '$' + Math.round(n).toLocaleString();
+const fmtd = n => (n >= 0 ? '$' : '−$') + Math.abs(Math.round(n)).toLocaleString();
+const pct = n => (n * 100).toFixed(1) + '%';
+const getActiveVal = () => STATE.valuations[STATE.activeValSource] || STATE.valuations.my || 950000;
+
+function saveAndRender() {
+  // Read valuation inputs
+  STATE.valuations.zillow  = parseFloat(document.getElementById('v-zillow').value) || 0;
+  STATE.valuations.redfin  = parseFloat(document.getElementById('v-redfin').value) || 0;
+  STATE.valuations.compass = parseFloat(document.getElementById('v-compass').value) || 0;
+  STATE.valuations.my      = parseFloat(document.getElementById('v-my').value) || 0;
+  STATE.activeValSource = document.getElementById('val-selector').value;
+  // Tenant
+  STATE.tenant.name  = document.getElementById('t-name').value;
+  STATE.tenant.rent  = parseFloat(document.getElementById('t-rent').value) || 4500;
+  STATE.tenant.start = document.getElementById('t-start').value;
+  STATE.tenant.end   = document.getElementById('t-end').value;
+  STATE.tenant.email = document.getElementById('t-email').value;
+  STATE.tenant.phone = document.getElementById('t-phone').value;
+  saveState();
+  // Re-render current panel
+  const active = document.querySelector('.panel.active');
+  if (active) renderPanel(active.id.replace('panel-',''));
+  // Also update valuation display if on valuation panel
+  renderValDisplay();
+}
+
+// ─── PANEL NAV ───────────────────────────────────────────────────
+function showPanel(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  document.querySelector(`[onclick="showPanel('${name}')"]`).classList.add('active');
+  renderPanel(name);
+}
+
+function renderPanel(name) {
+  if (name === 'returns')   renderReturns();
+  if (name === 'valuation') renderValuation();
+  if (name === 'opex')      renderOpex();
+  if (name === 'tenant')    renderTenant();
+  if (name === 'scenario')  renderScenario();
+}
+
+// ─── POPULATE INPUTS ON LOAD ─────────────────────────────────────
+function populateInputs() {
+  document.getElementById('v-zillow').value  = STATE.valuations.zillow  || '';
+  document.getElementById('v-redfin').value  = STATE.valuations.redfin  || '';
+  document.getElementById('v-compass').value = STATE.valuations.compass || '';
+  document.getElementById('v-my').value      = STATE.valuations.my      || '';
+  document.getElementById('val-selector').value = STATE.activeValSource;
+  document.getElementById('t-name').value  = STATE.tenant.name;
+  document.getElementById('t-rent').value  = STATE.tenant.rent;
+  document.getElementById('t-start').value = STATE.tenant.start;
+  document.getElementById('t-end').value   = STATE.tenant.end;
+  document.getElementById('t-email').value = STATE.tenant.email;
+  document.getElementById('t-phone').value = STATE.tenant.phone;
+}
+
+// ─── RETURNS ─────────────────────────────────────────────────────
+let cfChart, eqChart;
+function renderReturns() {
+  const cv = getActiveVal();
+  const annualRent = STATE.tenant.rent * 12;
+  const annualExp  = (STATE.hoa + STATE.taxInsurance + STATE.maintReserve) * 12;
+  const noi        = annualRent - annualExp;
+  const annualDebt = STATE.payment * 12;
+  const cfads      = noi - annualDebt;
+  const equity     = cv - STATE.loanBalance;
+  const coc        = cfads / STATE.equityInvested;
+  const capRate    = noi / cv;
+  const srcLabel   = {zillow:'Zillow',redfin:'Redfin',compass:'Compass',my:'my estimate'}[STATE.activeValSource];
+
+  document.getElementById('returns-sub').textContent = `Using ${srcLabel} (${fmt(cv)}) · updated ${new Date().toLocaleDateString('en-US',{month:'short',year:'numeric'})}`;
+
+  document.getElementById('returns-metrics').innerHTML = `
+    <div class="metric"><div class="metric-label">Current equity</div><div class="metric-value">${fmt(equity)}</div><div class="metric-sub">${fmt(cv)} est. value</div></div>
+    <div class="metric"><div class="metric-label">Annual NOI</div><div class="metric-value">${fmt(noi)}</div><div class="metric-sub">${fmt(noi/12)}/mo</div></div>
+    <div class="metric"><div class="metric-label">Cash flow</div><div class="metric-value ${cfads>=0?'pos':'neg'}">${fmtd(cfads)}</div><div class="metric-sub">${fmtd(cfads/12)}/mo after debt</div></div>
+    <div class="metric"><div class="metric-label">Cash-on-cash</div><div class="metric-value">${pct(coc)}</div><div class="metric-sub">Cap rate ${pct(capRate)}</div></div>
+  `;
+
+  const cfYears = [2022,2023,2024,2025];
+  const cfData  = cfYears.map(() => Math.round(STATE.tenant.rent*12 - annualExp - annualDebt));
+  if (cfChart) cfChart.destroy();
+  cfChart = new Chart(document.getElementById('cfChart'), {
+    type: 'bar',
+    data: { labels: cfYears, datasets: [{ data: cfData, backgroundColor: cfData.map(v=>v>=0?'#1a7a52':'#c0392b'), borderRadius: 4, borderSkipped: false }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{ticks:{callback:v=>'$'+v.toLocaleString()},grid:{color:'rgba(0,0,0,0.05)'}},x:{grid:{display:false}}} }
+  });
+
+  const eqYears = [2020,2021,2022,2023,2024,2025];
+  const implied = Math.max(0.02, Math.min(0.065, (cv / STATE.purchasePrice - 1) / 8));
+  const eqData  = eqYears.map(y => {
+    const val = STATE.purchasePrice * Math.pow(1+implied, y-2017);
+    let bal = 740000; const r=STATE.rate/12, pmt=3070.20;
+    for (let m=0; m<(y-2020)*12; m++) bal -= pmt - bal*r;
+    return Math.round(Math.max(0, val - bal));
+  });
+  if (eqChart) eqChart.destroy();
+  eqChart = new Chart(document.getElementById('eqChart'), {
+    type: 'line',
+    data: { labels: eqYears, datasets: [{ data: eqData, borderColor:'#1a4a8a', backgroundColor:'rgba(26,74,138,0.08)', fill:true, tension:0.35, pointRadius:4, pointBackgroundColor:'#1a4a8a' }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{ticks:{callback:v=>'$'+Math.round(v/1000)+'k'},grid:{color:'rgba(0,0,0,0.05)'}},x:{grid:{display:false}}} }
+  });
+
+  document.getElementById('pnl-table').innerHTML = `
+    <thead><tr><th>Line item</th><th>Monthly</th><th>Annual</th></tr></thead>
+    <tbody>
+      <tr><td>Gross rent</td><td>${fmt(STATE.tenant.rent)}</td><td>${fmt(annualRent)}</td></tr>
+      <tr><td style="padding-left:20px;color:var(--text-muted);">HOA</td><td>(${fmt(STATE.hoa)})</td><td>(${fmt(STATE.hoa*12)})</td></tr>
+      <tr><td style="padding-left:20px;color:var(--text-muted);">Tax & insurance (escrow)</td><td>(${fmt(STATE.taxInsurance)})</td><td>(${fmt(STATE.taxInsurance*12)})</td></tr>
+      <tr><td style="padding-left:20px;color:var(--text-muted);">Maintenance reserve</td><td>(${fmt(STATE.maintReserve)})</td><td>(${fmt(STATE.maintReserve*12)})</td></tr>
+      <tr class="total-row"><td>NOI</td><td>${fmt(noi/12)}</td><td>${fmt(noi)}</td></tr>
+      <tr><td style="padding-left:20px;color:var(--text-muted);">Mortgage (P+I)</td><td>(${fmt(STATE.payment)})</td><td>(${fmt(annualDebt)})</td></tr>
+      <tr class="total-row"><td>Cash flow (CFADS)</td><td style="color:${cfads>=0?'var(--green)':'var(--red)'}">${fmtd(cfads/12)}</td><td style="color:${cfads>=0?'var(--green)':'var(--red)'}">${fmtd(cfads)}</td></tr>
+    </tbody>
+  `;
+}
+
+// ─── VALUATION ───────────────────────────────────────────────────
+function renderValDisplay() {
+  const activeVal = getActiveVal();
+  const el = document.getElementById('active-val-display');
+  if (el) el.textContent = activeVal > 0 ? fmt(activeVal) : '—';
+}
+
+function renderValuation() {
+  populateInputs(); // refresh inputs from state
+  const vals = STATE.valuations;
+  const sources = [
+    { key:'zillow',  label:'Zillow Zestimate',  color:'#1a4a8a' },
+    { key:'redfin',  label:'Redfin estimate',   color:'#c0392b' },
+    { key:'compass', label:'Compass estimate',  color:'#3a3a3a' },
+    { key:'my',      label:'My estimate',       color:'#1a7a52' },
+  ];
+  const allVals = Object.values(vals).filter(v=>v>0);
+  const maxV = allVals.length ? Math.max(...allVals) : 1;
+  const minV = allVals.length ? Math.min(...allVals) * 0.95 : 0;
+
+  let html = '';
+  sources.forEach(s => {
+    const v = vals[s.key];
+    const isActive = STATE.activeValSource === s.key;
+    const barPct = v > 0 ? Math.round(((v - minV) / (maxV - minV + 1)) * 100) : 0;
+    html += `
+      <div class="val-row" style="${isActive?'background:var(--bg);margin:0 -22px;padding:12px 22px;':''}" >
+        <div class="val-dot" style="background:${s.color}"></div>
+        <div style="flex:1;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span class="val-label">${s.label} ${isActive?'<span class="badge badge-green" style="margin-left:6px;">active</span>':''}</span>
+            <span class="val-amount">${v>0?fmt(v):'—'}</span>
+          </div>
+          <div class="val-bar-track"><div class="val-bar-fill" style="width:${barPct}%;background:${s.color};"></div></div>
+        </div>
+      </div>`;
+  });
+  document.getElementById('val-rows').innerHTML = html;
+  renderValDisplay();
+
+  const activeVal = getActiveVal();
+  const equity = activeVal - STATE.loanBalance;
+  const gainOnCost = activeVal - STATE.purchasePrice;
+  const equityROI = equity / STATE.equityInvested;
+  document.getElementById('val-metrics').innerHTML = `
+    <div class="metric"><div class="metric-label">Current equity</div><div class="metric-value">${fmt(equity)}</div><div class="metric-sub">Value − mortgage</div></div>
+    <div class="metric"><div class="metric-label">Appreciation gain</div><div class="metric-value pos">${fmtd(gainOnCost)}</div><div class="metric-sub">vs ${fmt(STATE.purchasePrice)} purchase</div></div>
+    <div class="metric"><div class="metric-label">Equity / invested</div><div class="metric-value">${equityROI.toFixed(2)}x</div><div class="metric-sub">on ${fmt(STATE.equityInvested)} in</div></div>
+  `;
+  const histEl = document.getElementById('history-my');
+  if (histEl) histEl.textContent = vals.my > 0 ? fmt(vals.my) : '—';
+}
+
+// ─── OPEX ─────────────────────────────────────────────────────────
+function renderOpex() {
+  const total = STATE.expenses.reduce((a,e)=>a+e.amt,0);
+  const monthly = STATE.hoa + STATE.taxInsurance + STATE.maintReserve;
+  const avgMaint = total / 3;
+  document.getElementById('opex-metrics').innerHTML = `
+    <div class="metric"><div class="metric-label">Monthly fixed</div><div class="metric-value">${fmt(monthly)}</div><div class="metric-sub">${fmt(monthly*12)}/year</div></div>
+    <div class="metric"><div class="metric-label">Maintenance logged</div><div class="metric-value neg">${fmt(total)}</div><div class="metric-sub">since 2022</div></div>
+    <div class="metric"><div class="metric-label">Avg maintenance/yr</div><div class="metric-value">${fmt(avgMaint)}</div><div class="metric-sub">vs ${fmt(STATE.maintReserve*12)} reserved</div></div>
+  `;
+  const items = [
+    {label:'HOA dues',mo:STATE.hoa,p:STATE.hoa/monthly,cls:'blue'},
+    {label:'Tax & insurance (escrow)',mo:STATE.taxInsurance,p:STATE.taxInsurance/monthly,cls:'amber'},
+    {label:'Maintenance reserve',mo:STATE.maintReserve,p:STATE.maintReserve/monthly,cls:'green'},
+  ];
+  document.getElementById('opex-table').innerHTML = `
+    <thead><tr><th>Category</th><th>Monthly</th><th>Annual</th><th>Share</th></tr></thead>
+    <tbody>
+      ${items.map(i=>`<tr><td>${i.label}</td><td>${fmt(i.mo)}</td><td>${fmt(i.mo*12)}</td><td><span class="badge badge-${i.cls}">${(i.p*100).toFixed(0)}%</span></td></tr>`).join('')}
+      <tr class="total-row"><td>Total fixed</td><td>${fmt(monthly)}</td><td>${fmt(monthly*12)}</td><td></td></tr>
+    </tbody>
+  `;
+  renderExpLog();
+}
+
+function renderExpLog() {
+  const years = [...new Set(STATE.expenses.map(e=>e.date.slice(0,4)))].sort().reverse();
+  let html = '';
+  years.forEach(yr => {
+    const rows = STATE.expenses.filter(e=>e.date.startsWith(yr));
+    const ytot = rows.reduce((a,e)=>a+e.amt,0);
+    html += `<div class="yr-label"><span>${yr}</span><span>${fmt(ytot)}</span></div>`;
+    rows.forEach(e => {
+      const catColor = {Repair:'red',Maintenance:'amber',Appliances:'blue','Turn Over':'green',Loan:'purple'}[e.cat]||'blue';
+      html += `<div class="exp-row">
+        <span style="color:var(--text-faint);font-family:'DM Mono',monospace;">${e.date.slice(5)}</span>
+        <span><span class="badge badge-${catColor}">${e.cat}</span></span>
+        <span style="color:var(--text-muted);">${e.desc}</span>
+        <span style="font-weight:600;font-family:'DM Mono',monospace;text-align:right;">${fmt(e.amt)}</span>
+      </div>`;
+    });
+  });
+  document.getElementById('expense-log').innerHTML = html || '<p style="color:var(--text-faint);font-size:13px;padding:8px 0;">No expenses logged yet.</p>';
+}
+
+function toggleAddForm() {
+  const f = document.getElementById('add-form');
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+  if (f.style.display === 'block') {
+    document.getElementById('exp-date').value = new Date().toISOString().slice(0,10);
+    document.getElementById('exp-desc').value = '';
+    document.getElementById('exp-amt').value = '';
+  }
+}
+
+function addExpense() {
+  const date = document.getElementById('exp-date').value;
+  const cat  = document.getElementById('exp-cat').value;
+  const desc = document.getElementById('exp-desc').value.trim();
+  const amt  = parseFloat(document.getElementById('exp-amt').value) || 0;
+  if (!date || !desc || !amt) return;
+  STATE.expenses.unshift({ date, cat, desc, amt });
+  saveState();
+  toggleAddForm();
+  renderOpex();
+}
+
+// ─── TENANT ───────────────────────────────────────────────────────
+function renderTenant() {
+  populateInputs();
+  const start = new Date(STATE.tenant.start);
+  const now   = new Date();
+  const m2m   = !STATE.tenant.end;
+  const end   = m2m ? null : new Date(STATE.tenant.end);
+  const isActive = m2m || end > now;
+  const daysLeft = m2m ? null : Math.max(0, Math.round((end - now) / 86400000));
+  document.getElementById('lease-badge').textContent = m2m ? 'Month-to-month' : (isActive ? 'Active' : 'Expired');
+  document.getElementById('lease-badge').className = 'badge ' + (m2m ? 'badge-blue' : (isActive ? (daysLeft < 60 ? 'badge-amber' : 'badge-green') : 'badge-red'));
+  const termMo = end ? Math.round((end - start) / (86400000 * 30)) : Math.round((now - start) / (86400000 * 30));
+  document.getElementById('tenant-metrics').innerHTML = `
+    <div class="metric"><div class="metric-label">Monthly rent</div><div class="metric-value pos">${fmt(STATE.tenant.rent)}</div><div class="metric-sub">${fmt(STATE.tenant.rent*12)}/year</div></div>
+    <div class="metric"><div class="metric-label">${m2m ? 'Status' : 'Days to renewal'}</div><div class="metric-value">${m2m ? 'M-to-M' : daysLeft}</div><div class="metric-sub">${m2m ? 'No fixed end date' : end.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div></div>
+    <div class="metric"><div class="metric-label">Lease term</div><div class="metric-value">${termMo} mo</div><div class="metric-sub">${start.toLocaleDateString('en-US',{month:'short',year:'numeric'})} – ${m2m ? 'ongoing' : end.toLocaleDateString('en-US',{month:'short',year:'numeric'})}</div></div>
+  `;
+  document.getElementById('rent-history-table').innerHTML = `
+    <thead><tr><th>Period</th><th>Monthly rent</th><th>Annual</th><th style="text-align:left">Notes</th></tr></thead>
+    <tbody>${STATE.rentHistory.map(r=>`<tr><td>${r.period}</td><td>${fmt(r.rent)}</td><td>${fmt(r.rent*12)}</td><td style="text-align:left;color:var(--text-muted);">${r.notes}</td></tr>`).join('')}</tbody>
+  `;
+}
+
+// ─── SCENARIO ────────────────────────────────────────────────────
+let scenChart;
+function renderScenario() {
+  const cv       = getActiveVal();
+  const srcLabel = {zillow:'Zillow',redfin:'Redfin',compass:'Compass',my:'my estimate'}[STATE.activeValSource];
+  document.getElementById('scenario-sub').textContent = `Modeling from ${fmt(cv)} (${srcLabel})`;
+
+  const rentGrowth = parseFloat(document.getElementById('sl-rent').value)/100;
+  const apprecRate = parseFloat(document.getElementById('sl-appr').value)/100;
+  const saleYear   = parseInt(document.getElementById('sl-sale').value);
+  const sellCost   = parseFloat(document.getElementById('sl-sell').value)/100;
+  const vacRate    = parseFloat(document.getElementById('sl-vac').value)/100;
+  document.getElementById('sv-rent').textContent = (rentGrowth*100).toFixed(1)+'%';
+  document.getElementById('sv-appr').textContent = (apprecRate*100).toFixed(1)+'%';
+  document.getElementById('sv-sale').textContent = saleYear;
+  document.getElementById('sv-sell').textContent = (sellCost*100).toFixed(1)+'%';
+  document.getElementById('sv-vac').textContent  = (vacRate*100).toFixed(0)+'%';
+
+  const holdYears = saleYear - 2025;
+  const salePrice = cv * Math.pow(1+apprecRate, holdYears);
+  let bal = STATE.loanBalance, r = STATE.rate/12;
+  for (let m=0; m<holdYears*12; m++) bal -= STATE.payment - bal*r;
+  const saleEquity = salePrice - bal - salePrice*sellCost;
+  let cumCF = 0;
+  for (let y=0; y<holdYears; y++) {
+    cumCF += (STATE.tenant.rent*12*Math.pow(1+rentGrowth,y)*(1-vacRate)) - (STATE.hoa+STATE.taxInsurance+STATE.maintReserve)*12 - STATE.payment*12;
+  }
+  const moic = (saleEquity + cumCF) / STATE.equityInvested;
+
+  document.getElementById('scenario-metrics').innerHTML = `
+    <div class="metric"><div class="metric-label">Sale price (${saleYear})</div><div class="metric-value">${fmt(salePrice)}</div><div class="metric-sub">${pct(apprecRate)}/yr</div></div>
+    <div class="metric"><div class="metric-label">Net sale proceeds</div><div class="metric-value pos">${fmt(saleEquity)}</div><div class="metric-sub">After debt + ${pct(sellCost)} costs</div></div>
+    <div class="metric"><div class="metric-label">Cum. cash flow</div><div class="metric-value ${cumCF>=0?'pos':'neg'}">${fmtd(cumCF)}</div><div class="metric-sub">Over ${holdYears} years</div></div>
+    <div class="metric"><div class="metric-label">Total MOIC</div><div class="metric-value pos">${moic.toFixed(2)}x</div><div class="metric-sub">${fmtd(saleEquity+cumCF-STATE.equityInvested)} gain</div></div>
+  `;
+
+  const yrs=[],eqArr=[],cfArr=[];
+  let runBal=STATE.loanBalance, runCF=0;
+  for (let y=0; y<=holdYears; y++) {
+    yrs.push(2025+y);
+    eqArr.push(Math.round(cv*Math.pow(1+apprecRate,y)-runBal));
+    cfArr.push(Math.round(runCF));
+    runCF += (STATE.tenant.rent*12*Math.pow(1+rentGrowth,y)*(1-vacRate)) - (STATE.hoa+STATE.taxInsurance+STATE.maintReserve)*12 - STATE.payment*12;
+    for (let m=0; m<12; m++) runBal -= STATE.payment - runBal*r;
+  }
+
+  if (scenChart) scenChart.destroy();
+  scenChart = new Chart(document.getElementById('scenChart'), {
+    type: 'line',
+    data: { labels: yrs, datasets: [
+      {label:'Equity',data:eqArr,borderColor:'#1a4a8a',backgroundColor:'rgba(26,74,138,0.07)',fill:true,tension:0.35,pointRadius:3},
+      {label:'Cum. CF',data:cfArr,borderColor:'#1a7a52',backgroundColor:'rgba(26,122,82,0.07)',fill:true,tension:0.35,pointRadius:3,borderDash:[5,4]}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{y:{ticks:{callback:v=>v>=0?'$'+Math.round(v/1000)+'k':'-$'+Math.round(Math.abs(v)/1000)+'k'},grid:{color:'rgba(0,0,0,0.04)'}},x:{grid:{display:false}}}}
+  });
+}
+
+function updateScenario() { renderScenario(); }
+
+// ─── INIT ─────────────────────────────────────────────────────────
+populateInputs();
+renderReturns();
+</script>
+</body>
+</html>
