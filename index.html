@@ -809,47 +809,40 @@ function renderFamilySale() {
   const marketNet   = salePrice - marketCosts - STATE.loanBalance;
   const savings     = sellerNet - marketNet;
 
+  // Market cost breakdown
+  const listingComm  = salePrice * 0.03;
+  const buyerComm    = salePrice * 0.03;
+  const mktTransfer  = salePrice * 0.0145;
+  const titleFees    = 1500;
+  const marketCostDetailed = listingComm + buyerComm + mktTransfer + titleFees;
+  const marketNetDetailed  = salePrice - marketCostDetailed - STATE.loanBalance;
+  const savingsDetailed    = sellerNet - marketNetDetailed;
+
+  const rowStyle = 'display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px;';
+  const totalStyle = 'display:flex;justify-content:space-between;padding:7px 0;font-size:13px;font-weight:600;';
+  const netStyle = 'display:flex;justify-content:space-between;padding:8px 0 0;font-size:15px;font-weight:700;border-top:2px solid var(--border-strong);margin-top:2px;';
+
   // Seller side: family
   document.getElementById('fs-seller-metrics').innerHTML = `
-    <div style="margin-bottom:10px;">
-      <div class="metric-label">Sale price</div>
-      <div class="metric-value">${fmt(salePrice)}</div>
-    </div>
-    <div style="margin-bottom:10px;">
-      <div class="metric-label">Transaction costs</div>
-      <div class="metric-value neg">(${fmt(sellerCosts)})</div>
-      <div class="metric-sub">Transfer tax + legal</div>
-    </div>
-    <div style="margin-bottom:10px;">
-      <div class="metric-label">Pay off mortgage</div>
-      <div class="metric-value neg">(${fmt(STATE.loanBalance)})</div>
-    </div>
-    <div style="padding-top:10px;border-top:1px solid var(--border);">
-      <div class="metric-label">Net to you</div>
-      <div class="metric-value pos" style="font-size:28px;">${fmt(sellerNet)}</div>
-    </div>
+    <div style="${rowStyle}"><span style="color:var(--text-muted);">Sale price</span><span>${fmt(salePrice)}</span></div>
+    <div style="${rowStyle}"><span style="color:var(--text-muted);">DC transfer tax (1.45%)</span><span class="neg">(${fmt(transferTax)})</span></div>
+    <div style="${rowStyle}"><span style="color:var(--text-muted);">Legal fees (your side)</span><span class="neg">(${fmt(legalFees)})</span></div>
+    <div style="${totalStyle}"><span style="color:var(--text-muted);">Subtotal costs</span><span class="neg">(${fmt(sellerCosts)})</span></div>
+    <div style="${rowStyle}"><span style="color:var(--text-muted);">Mortgage payoff</span><span class="neg">(${fmt(STATE.loanBalance)})</span></div>
+    <div style="${netStyle}"><span>Net to you</span><span class="pos">${fmt(sellerNet)}</span></div>
   `;
 
   // Seller side: market
   document.getElementById('fs-market-metrics').innerHTML = `
-    <div style="margin-bottom:10px;">
-      <div class="metric-label">Sale price (est.)</div>
-      <div class="metric-value">${fmt(salePrice)}</div>
-    </div>
-    <div style="margin-bottom:10px;">
-      <div class="metric-label">Transaction costs</div>
-      <div class="metric-value neg">(${fmt(marketCosts)})</div>
-      <div class="metric-sub">~6% agent + closing</div>
-    </div>
-    <div style="margin-bottom:10px;">
-      <div class="metric-label">Pay off mortgage</div>
-      <div class="metric-value neg">(${fmt(STATE.loanBalance)})</div>
-    </div>
-    <div style="padding-top:10px;border-top:1px solid var(--border);">
-      <div class="metric-label">Net to you</div>
-      <div class="metric-value" style="font-size:28px;">${fmt(marketNet)}</div>
-      <div class="metric-sub pos">Family sale saves you ${fmt(savings)}</div>
-    </div>
+    <div style="${rowStyle}"><span style="color:var(--text-muted);">Sale price</span><span>${fmt(salePrice)}</span></div>
+    <div style="${rowStyle}"><span style="color:var(--text-muted);">Listing agent (3%)</span><span class="neg">(${fmt(listingComm)})</span></div>
+    <div style="${rowStyle}"><span style="color:var(--text-muted);">Buyer's agent (3%)</span><span class="neg">(${fmt(buyerComm)})</span></div>
+    <div style="${rowStyle}"><span style="color:var(--text-muted);">DC transfer tax (1.45%)</span><span class="neg">(${fmt(mktTransfer)})</span></div>
+    <div style="${rowStyle}"><span style="color:var(--text-muted);">Title & settlement</span><span class="neg">(${fmt(titleFees)})</span></div>
+    <div style="${totalStyle}"><span style="color:var(--text-muted);">Subtotal costs</span><span class="neg">(${fmt(marketCostDetailed)})</span></div>
+    <div style="${rowStyle}"><span style="color:var(--text-muted);">Mortgage payoff</span><span class="neg">(${fmt(STATE.loanBalance)})</span></div>
+    <div style="${netStyle}"><span>Net to you</span><span>${fmt(marketNetDetailed)}</span></div>
+    <div style="margin-top:10px;padding:8px 10px;background:var(--green-bg);border-radius:var(--radius-sm);font-size:12px;color:var(--green);font-weight:600;">Family sale puts <strong>${fmt(savingsDetailed)}</strong> more in your pocket</div>
   `;
 
   // Parents' current returns (all cash, no mortgage)
