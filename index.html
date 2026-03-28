@@ -472,6 +472,35 @@ const fmtd = n => (n >= 0 ? '$' : '−$') + Math.abs(Math.round(n)).toLocaleStri
 const pct = n => (n * 100).toFixed(1) + '%';
 const getActiveVal = () => STATE.valuations[STATE.activeValSource] || STATE.valuations.my || 950000;
 
+// IRR solver via bisection
+function calcIRR(cashFlows) {
+  const npv = r => cashFlows.reduce((sum, cf, t) => sum + cf / Math.pow(1 + r, t), 0);
+  let lo = -0.999, hi = 10.0;
+  if (npv(lo) * npv(hi) > 0) return null; // no solution
+  for (let i = 0; i < 300; i++) {
+    const mid = (lo + hi) / 2;
+    if (Math.abs(npv(mid)) < 0.001) return mid;
+    npv(lo) * npv(mid) < 0 ? hi = mid : lo = mid;
+  }
+  return (lo + hi) / 2;
+}
+
+// Todd's historical annual cash flows by year (based on rent history)
+function toddAnnualCF(year) {
+  const annualOpex = (STATE.hoa + STATE.taxInsurance + STATE.maintReserve) * 12;
+  const annualDebt = STATE.payment * 12;
+  const rent = year <= 2020 ? 3500 : year === 2021 ? 3695 : year <= 2023 ? 4250 : 4500;
+  return rent * 12 - annualOpex - annualDebt;
+}
+
+// Build Todd's IRR cash flows from 2017 to a given sale year with given net proceeds
+function toddIRRCashFlows(saleYear, netProceeds) {
+  const cfs = [-STATE.equityInvested]; // t=0: initial investment
+  for (let y = 2017; y < saleYear; y++) cfs.push(toddAnnualCF(y));
+  cfs.push(toddAnnualCF(saleYear) + netProceeds); // terminal year: CF + proceeds
+  return cfs;
+}
+
 function saveAndRender() {
   // Read valuation inputs
   STATE.valuations.zillow  = parseFloat(document.getElementById('v-zillow').value) || 0;
@@ -913,9 +942,14 @@ function renderFamilySale() {
     <div style="${rowStyle}"><span style="color:var(--text-muted);">Legal fees (your side)</span><span class="neg">(${fmt(legalFees)})</span></div>
     <div style="${totalStyle}"><span style="color:var(--text-muted);">Subtotal costs</span><span class="neg">(${fmt(sellerCosts)})</span></div>
     <div style="${rowStyle}"><span style="color:var(--text-muted);">Mortgage payoff</span><span class="neg">(${fmt(STATE.loanBalance)})</span></div>
+  const toddFamilyIRR = calcIRR(toddIRRCashFlows(2026, sellerNet));
+  const toddFamilyIRRStr = toddFamilyIRR !== null ? (toddFamilyIRR * 100).toFixed(1) + '%' : 'N/A';
     <div style="${netStyle}"><span>Net to you</span><span class="pos">${fmt(sellerNet)}</span></div>
+    <div style="margin-top:10px;padding:8px 10px;background:var(--blue-bg);border-radius:var(--radius-sm);font-size:12px;color:var(--blue);font-weight:600;">Your IRR since 2017: <strong>${toddFamilyIRRStr}</strong></div>
   `;
 
+  const toddMarketIRR = calcIRR(toddIRRCashFlows(2026, marketNetDetailed));
+  const toddMarketIRRStr = toddMarketIRR !== null ? (toddMarketIRR * 100).toFixed(1) + '%' : 'N/A';
   // Seller side: market
   document.getElementById('fs-market-metrics').innerHTML = `
     <div style="${rowStyle}"><span style="color:var(--text-muted);">Sale price</span><span>${fmt(salePrice)}</span></div>
@@ -926,7 +960,8 @@ function renderFamilySale() {
     <div style="${totalStyle}"><span style="color:var(--text-muted);">Subtotal costs</span><span class="neg">(${fmt(marketCostDetailed)})</span></div>
     <div style="${rowStyle}"><span style="color:var(--text-muted);">Mortgage payoff</span><span class="neg">(${fmt(STATE.loanBalance)})</span></div>
     <div style="${netStyle}"><span>Net to you</span><span>${fmt(marketNetDetailed)}</span></div>
-    <div style="margin-top:10px;padding:8px 10px;background:var(--green-bg);border-radius:var(--radius-sm);font-size:12px;color:var(--green);font-weight:600;">Family sale puts <strong>${fmt(savingsDetailed)}</strong> more in your pocket</div>
+    <div style="margin-top:8px;padding:8px 10px;background:var(--blue-bg);border-radius:var(--radius-sm);font-size:12px;color:var(--blue);font-weight:600;">Your IRR since 2017: <strong>${toddMarketIRRStr}</strong></div>
+    <div style="margin-top:6px;padding:8px 10px;background:var(--green-bg);border-radius:var(--radius-sm);font-size:12px;color:var(--green);font-weight:600;">Family sale puts <strong>${fmt(savingsDetailed)}</strong> more in your pocket</div>
   `;
 
   // Parents' current returns (all cash, no mortgage)
@@ -979,11 +1014,20 @@ function renderFamilySale() {
   const totalReturn = futureEquity + cumCF;
   const moic        = totalReturn / parentBasis;
 
+  // Parents' IRR cash flows
+  const parentCFs = [-parentBasis];
+  for (let y = 0; y < holdYears - 1; y++) {
+    parentCFs.push(STATE.tenant.rent * 12 * Math.pow(1 + rentGrowth, y) * (1 - vacRate) - annualOpex);
+  }
+  parentCFs.push(STATE.tenant.rent * 12 * Math.pow(1 + rentGrowth, holdYears - 1) * (1 - vacRate) - annualOpex + futureEquity);
+  const parentIRR = calcIRR(parentCFs);
+  const parentIRRStr = parentIRR !== null ? (parentIRR * 100).toFixed(1) + '%' : 'N/A';
+
   document.getElementById('fs-scenario-metrics').innerHTML = `
     <div class="metric"><div class="metric-label">Sale price (${saleYear})</div><div class="metric-value">${fmt(futurePrice)}</div><div class="metric-sub">${pct(apprecRate)}/yr from ${fmt(salePrice)}</div></div>
     <div class="metric"><div class="metric-label">Net sale proceeds</div><div class="metric-value pos">${fmt(futureEquity)}</div><div class="metric-sub">After ${pct(sellCost)} selling costs</div></div>
     <div class="metric"><div class="metric-label">Cum. cash flow</div><div class="metric-value pos">${fmt(cumCF)}</div><div class="metric-sub">Over ${holdYears} years</div></div>
-    <div class="metric"><div class="metric-label">Total MOIC</div><div class="metric-value pos">${moic.toFixed(2)}x</div><div class="metric-sub">on ${fmt(parentBasis)} invested</div></div>
+    <div class="metric"><div class="metric-label">MOIC / IRR</div><div class="metric-value pos">${moic.toFixed(2)}x</div><div class="metric-sub">IRR: <strong>${parentIRRStr}</strong> annualized</div></div>
   `;
 
   // Chart: equity + cumulative cash flow over hold period
