@@ -148,6 +148,24 @@ td:last-child, th:last-child { text-align: right; }
 </style>
 </head>
 <body>
+
+<!-- PASSWORD GATE -->
+<div id="auth-gate" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:40px 48px;width:340px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+    <div style="font-size:22px;font-weight:600;margin-bottom:6px;">1110 6th St NE</div>
+    <div style="font-size:13px;color:var(--text-faint);margin-bottom:28px;">Investment Dashboard</div>
+    <div style="text-align:left;margin-bottom:16px;">
+      <div class="input-group">
+        <label>Password</label>
+        <input type="password" id="auth-input" placeholder="Enter password" onkeydown="if(event.key==='Enter')checkAuth()" style="width:100%;font-size:14px;padding:9px 12px;">
+      </div>
+    </div>
+    <div id="auth-error" style="color:var(--red);font-size:12px;margin-bottom:12px;display:none;">Incorrect password</div>
+    <button class="btn btn-primary" onclick="checkAuth()" style="width:100%;padding:9px;">Enter</button>
+  </div>
+</div>
+
+<div id="app-content" style="display:none;">
 <div class="app">
 
 <nav class="sidebar">
@@ -389,6 +407,7 @@ td:last-child, th:last-child { text-align: right; }
 
 </main>
 </div>
+</div> <!-- end app-content -->
 
 <div class="save-toast" id="save-toast">Saved</div>
 
@@ -1081,6 +1100,36 @@ function renderFamilySale() {
 // ─── INIT ─────────────────────────────────────────────────────────
 populateInputs();
 renderReturns();
+</script>
+<script>
+// ─── AUTH ─────────────────────────────────────────────────────────
+const AUTH_KEY = 'condo_auth_v1';
+const AUTH_PW  = 'Christensen';
+
+function checkAuth() {
+  const val = document.getElementById('auth-input').value;
+  if (val === AUTH_PW) {
+    localStorage.setItem(AUTH_KEY, '1');
+    document.getElementById('auth-gate').style.display = 'none';
+    document.getElementById('app-content').style.display = 'block';
+    document.getElementById('auth-input').value = '';
+  } else {
+    document.getElementById('auth-error').style.display = 'block';
+    document.getElementById('auth-input').value = '';
+    document.getElementById('auth-input').focus();
+  }
+}
+
+(function() {
+  if (localStorage.getItem(AUTH_KEY) === '1') {
+    document.getElementById('auth-gate').style.display = 'none';
+    document.getElementById('app-content').style.display = 'block';
+  } else {
+    document.getElementById('auth-gate').style.display = 'flex';
+    document.getElementById('app-content').style.display = 'none';
+    setTimeout(() => document.getElementById('auth-input').focus(), 50);
+  }
+})();
 </script>
 </body>
 </html>
